@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sorteio EJUD/TJAM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0f2160; --navy-2:#1b3a8f; --blue:#1d86cf; --green:#0f8a3c;
+  --gold:#f3b52a; --gold-2:#ffd766; --gold-3:#e39a12;
+  --ink:#14203f; --muted:#5a6683; --line:rgba(15,33,96,.14);
+  --card:rgba(255,255,255,.86); --card-solid:#fff; --bg:#fff8ec;
+  --ok:#0f8a3c; --warn:#c0392b;
+  --radius:18px; --shadow:0 10px 30px rgba(15,33,96,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  color:var(--ink); background:var(--bg); min-height:100vh;
+}
+.bg{position:fixed;inset:0;z-index:-2;background:url("assets/fundo.jpg") center/cover no-repeat}
+@media (max-width:720px) and (orientation:portrait){
+  /* Fundo vertical para celular: se assets/fundo-celular.jpg não existir, usa o horizontal */
+  .bg{background:url("assets/fundo-celular.jpg") center top/cover no-repeat,url("assets/fundo.jpg") 18% center/cover no-repeat}
+}
+.bg::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,250,240,.80) 0%,rgba(255,250,240,.55) 40%,rgba(255,250,240,.78) 100%)}
+.serif{font-family:"Playfair Display",Georgia,"Times New Roman",serif}
+button,input,textarea,select{font:inherit;color:inherit}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+
+/* Cabeçalho */
+header.top{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap;padding:6px 0 14px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand img{height:64px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.12))}
+.titles{text-align:center;flex:1;min-width:260px}
+.kicker{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--navy);
+  font-family:"Playfair Display",Georgia,serif;font-weight:800;letter-spacing:.38em;font-size:15px}
+.kicker::before,.kicker::after{content:"";height:3px;width:min(110px,12vw);border-radius:3px;
+  background:linear-gradient(90deg,transparent,var(--gold),var(--gold-3))}
+.kicker::after{transform:scaleX(-1)}
+.titles h1{margin:4px 0 0;font-style:italic;font-weight:800;color:var(--navy);
+  font-size:clamp(22px,3.2vw,38px);line-height:1.1;text-shadow:0 2px 0 rgba(255,255,255,.7)}
+.titles .sub{margin-top:2px;font-style:italic;font-weight:700;font-size:clamp(16px,2vw,22px);
+  background:linear-gradient(90deg,var(--navy),var(--navy-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tools{display:flex;gap:8px}
+.icon-btn{border:1px solid var(--line);background:var(--card);border-radius:12px;height:42px;min-width:42px;padding:0 12px;
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 2px 8px rgba(15,33,96,.08);font-weight:600;font-size:14px}
+.icon-btn:hover{background:#fff}
+.icon-btn svg{width:18px;height:18px}
+
+/* Grade principal */
+main.grid{display:grid;grid-template-columns:380px 1fr;gap:18px;align-items:start}
+.card{background:var(--card);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.7);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 0}
+.card-h h2{margin:0;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--navy)}
+.card-b{padding:14px 18px 18px}
+
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:rgba(15,33,96,.07);border-radius:12px;padding:4px;gap:4px}
+.tab{border:0;background:transparent;padding:10px;border-radius:9px;cursor:pointer;font-weight:600;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.tab[aria-selected="true"]{background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(15,33,96,.12)}
+.tab:disabled{cursor:not-allowed}
+.tab svg{width:18px;height:18px}
+
+.field{margin-top:14px}
+.field label,.lbl{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=number],input[type=text],textarea{
+  width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;outline:none;transition:border .15s,box-shadow .15s}
+input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,134,207,.18)}
+input:disabled,textarea:disabled{background:#f3f4f8;color:#6b7390}
+textarea{min-height:190px;resize:vertical;line-height:1.45}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:10px;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--navy)}
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;width:max-content}
+.stepper button{border:0;background:transparent;width:42px;height:42px;cursor:pointer;font-size:20px;font-weight:700;color:var(--navy)}
+.stepper button:disabled{color:#b8bdd0;cursor:not-allowed}
+.stepper input{border:0;width:64px;text-align:center;border-radius:0;font-weight:700;padding:10px 0}
+.stepper input:focus{box-shadow:none}
+.file-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--navy-2);cursor:pointer;margin-top:8px}
+.file-btn input{display:none}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.pill.ok{background:rgba(15,138,60,.12);color:var(--ok)}
+.pill.warn{background:rgba(243,181,42,.22);color:#8a5a00}
+.pill.lock{background:rgba(15,33,96,.1);color:var(--navy)}
+.msg{font-size:13px;margin-top:8px;min-height:18px}
+.msg.err{color:var(--warn);font-weight:600}
+.msg.info{color:var(--muted)}
+
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--navy)}
+.btn-ghost:hover{background:#f6f8ff}
+.btn-danger{background:#fff;border:1px solid rgba(192,57,43,.35);color:var(--warn)}
+.btn-danger:hover{background:#fff5f4}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.btns .btn{flex:1}
+
+.rules{margin-top:16px;padding:12px 14px;border-radius:12px;background:rgba(15,33,96,.05);font-size:12.5px;color:var(--muted);line-height:1.5}
+.rules b{color:var(--navy)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+
+/* Palco */
+.stage{position:relative;overflow:hidden;text-align:center;padding:22px 20px 24px}
+.stage-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.badge-gold{display:inline-block;padding:8px 26px;border-radius:999px;font-family:"Playfair Display",Georgia,serif;font-weight:800;font-size:20px;color:var(--navy);
+  background:linear-gradient(180deg,var(--gold-2),var(--gold) 55%,var(--gold-3));box-shadow:0 4px 14px rgba(227,154,18,.35),inset 0 1px 0 rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.6)}
+.counter{font-size:14px;color:var(--muted);font-weight:600}
+.counter b{color:var(--navy);font-size:18px}
+.progress{height:6px;border-radius:6px;background:rgba(15,33,96,.1);margin:14px 0 0;overflow:hidden}
+.progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--blue));transition:width .5s}
+
+.display{min-height:300px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:14px;padding:26px 6px}
+.idle{color:var(--muted)}
+.idle .big{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:800;color:var(--navy);font-size:clamp(34px,5vw,64px);line-height:1.05}
+.idle p{margin:10px 0 0}
+.res{position:relative;background:#fff;border-radius:20px;padding:22px 28px;min-width:180px;max-width:100%;
+  box-shadow:0 12px 30px rgba(15,33,96,.16);border:2px solid transparent;
+  background-image:linear-gradient(#fff,#fff),linear-gradient(135deg,var(--gold-2),var(--gold-3),var(--blue));
+  background-origin:border-box;background-clip:padding-box,border-box}
+.res .ord{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;font-size:12px;font-weight:700;padding:3px 12px;border-radius:999px;white-space:nowrap}
+.res .val{font-family:"Playfair Display",Georgia,serif;font-weight:800;color:var(--navy);line-height:1.1;word-break:break-word;font-variant-numeric:lining-nums tabular-nums}
+.res.rolling .val{color:#7b86a8;filter:blur(.4px)}
+.res.done{animation:pop .55s cubic-bezier(.2,1.6,.4,1)}
+.res.done .val{background:linear-gradient(180deg,var(--navy-2),var(--navy));-webkit-background-clip:text;background-clip:text;color:transparent}
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.07)}100%{transform:scale(1)}}
+.swoosh{display:block;height:14px;width:min(420px,70%);margin:-6px auto 4px;opacity:.95}
+
+.draw-btn{position:relative;border:0;cursor:pointer;border-radius:999px;padding:18px 54px;font-size:22px;font-weight:800;letter-spacing:.02em;color:var(--navy);
+  background:linear-gradient(180deg,var(--gold-2),var(--gold) 55%,var(--gold-3));
+  box-shadow:0 10px 24px rgba(227,154,18,.45),inset 0 2px 0 rgba(255,255,255,.7);transition:transform .12s,box-shadow .12s;display:inline-flex;gap:12px;align-items:center}
+.draw-btn:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(227,154,18,.5),inset 0 2px 0 rgba(255,255,255,.7)}
+.draw-btn:active{transform:translateY(1px)}
+.draw-btn:disabled{filter:grayscale(.6);opacity:.6;cursor:not-allowed;transform:none}
+.draw-btn svg{width:26px;height:26px}
+.kbd-hint{font-size:12px;color:var(--muted);margin-top:10px}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:#fff;font-size:11px;font-family:inherit}
+
+/* Histórico */
+.hist{margin-top:18px}
+.hist-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:430px;overflow:auto}
+.hist-item{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.hist-item .n{font-weight:800;color:#fff;background:var(--navy);border-radius:10px;text-align:center;padding:6px 0;font-size:14px}
+.hist-item .v{font-weight:700;font-size:16px;word-break:break-word}
+.hist-item .t{font-size:12px;color:var(--muted);font-weight:500}
+.hist-item.absent .v{text-decoration:line-through;color:#8a93ad}
+.hist-item.absent .n{background:#9aa2b9}
+.mini{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:var(--navy);white-space:nowrap}
+.mini:hover{background:#f6f8ff}
+.mini.on{background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.35);color:var(--warn)}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:18px}
+.hist-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+details.pool{margin-top:14px;font-size:13px}
+details.pool summary{cursor:pointer;font-weight:600;color:var(--navy-2)}
+.pool-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:200px;overflow:auto}
+.chip{padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:12px}
+.chip.out{text-decoration:line-through;color:#a0a7bd;background:#f2f3f7}
+
+.integrity{margin-top:12px;font-size:12px;color:var(--muted);word-break:break-all}
+.integrity code{font-size:11.5px;color:var(--navy);background:rgba(15,33,96,.06);padding:2px 6px;border-radius:6px}
+
+footer{display:flex;justify-content:center;align-items:center;gap:26px;padding:26px 0 10px;color:var(--navy);font-size:12px;flex-wrap:wrap;text-align:center}
+footer img{height:42px}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(30px);opacity:0;background:var(--navy);color:#fff;padding:12px 18px;border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);font-weight:600;font-size:14px;transition:all .3s;z-index:50;max-width:calc(100% - 32px);text-align:center;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+canvas#confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
+
+/* Modo apresentação */
+body.present main.grid{grid-template-columns:1fr}
+body.present aside.config,body.present .hist,body.present footer,body.present .tools .hide-present{display:none}
+body.present .display{min-height:52vh}
+body.present .wrap{max-width:1500px}
+body.present .brand img{height:76px}
+
+@media (max-width:960px){
+  main.grid{grid-template-columns:1fr}
+  aside.config{order:2}
+  .brand img{height:52px}
+  .titles{order:3;flex-basis:100%}
+}
+@media (max-width:520px){
+  .row{grid-template-columns:1fr 1fr}
+  .draw-btn{padding:16px 30px;font-size:19px}
+  .hist-item{grid-template-columns:44px 1fr;}
+  .hist-item .mini{grid-column:1 / -1}
+  .icon-btn .lbl-t{display:none}
+}
+
+/* Ata para impressão */
+#ata{display:none}
+@media print{
+  body{background:#fff}
+  .bg,.wrap,.toast,canvas{display:none !important}
+  #ata{display:block;color:#000;font-family:Georgia,serif;padding:10mm}
+  #ata header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #0f2160;padding-bottom:10px;margin-bottom:14px}
+  #ata header img{height:56px}
+  #ata h1{font-size:20px;margin:0}
+  #ata h2{font-size:15px;margin:18px 0 6px}
+  #ata table{width:100%;border-collapse:collapse;font-size:12.5px}
+  #ata th,#ata td{border:1px solid #999;padding:5px 8px;text-align:left}
+  #ata th{background:#eef1f8}
+  #ata .meta{font-size:12.5px;line-height:1.6}
+  #ata .hash{font-family:monospace;font-size:11px;word-break:break-all}
+  #ata .sign{margin-top:46px;display:flex;gap:40px}
+  #ata .sign div{flex:1;border-top:1px solid #000;text-align:center;padding-top:4px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"></div>
+<canvas id="confetti"></canvas>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><img src="assets/logo-ejud.png" alt="EJUD — Escola Judicial do Tribunal de Justiça do Estado do Amazonas"></div>
+    <div class="titles">
+      <div class="kicker">EJUD/TJAM</div>
+      <h1 class="serif">Encerramento do Ano Letivo 2026</h1>
+      <div class="sub serif">O Mérito de Servir · Sorteio</div>
+    </div>
+    <div class="tools">
+      <button class="icon-btn" id="btnSom" title="Ativar/desativar som" aria-label="Som">
+        <svg id="icoSom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+      </button>
+      <button class="icon-btn" id="btnApresentar" title="Modo apresentação (tela cheia)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <span class="lbl-t" id="lblApresentar">Apresentar</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Configuração -->
+    <aside class="card config" aria-label="Configuração do sorteio">
+      <div class="card-h">
+        <h2>Configuração</h2>
+        <span id="statusPill" class="pill ok">Aberto para edição</span>
+      </div>
+      <div class="card-b">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tabNum" aria-selected="true" data-mode="numeros">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>Por número
+          </button>
+          <button class="tab" role="tab" id="tabNome" aria-selected="false" data-mode="nomes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Por nome
+          </button>
+        </div>
+
+        <section id="cfgNum">
+          <div class="row field">
+            <div><label for="min">Do número</label><input type="number" id="min" inputmode="numeric" step="1"></div>
+            <div><label for="max">Até o número</label><input type="number" id="max" inputmode="numeric" step="1"></div>
+          </div>
+          <div class="field">
+            <label for="excluir">Números que não participam <span style="font-weight:400">(opcional)</span></label>
+            <input type="text" id="excluir" placeholder="Ex.: 7, 13, 20-25">
+            <div class="hint">Separe por vírgula. Use hífen para intervalos.</div>
+          </div>
+        </section>
+
+        <section id="cfgNome" hidden>
+          <div class="field">
+            <label for="nomes">Participantes <span style="font-weight:400">(um por linha)</span></label>
+            <textarea id="nomes" placeholder="Maria da Silva&#10;João Pereira&#10;Ana Souza&#10;..."></textarea>
+            <label class="file-btn"><input type="file" id="arquivo" accept=".txt,.csv,text/plain,text/csv">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              Importar lista (.txt ou .csv)
+            </label>
+            <label class="check"><input type="checkbox" id="dedup" checked> Ignorar nomes repetidos</label>
+          </div>
+        </section>
+
+        <div class="field">
+          <span class="lbl">Quantidade por sorteio</span>
+          <div class="stepper">
+            <button type="button" id="qtdMenos" aria-label="Diminuir">−</button>
+            <input type="number" id="qtd" min="1" step="1" aria-label="Quantidade por sorteio">
+            <button type="button" id="qtdMais" aria-label="Aumentar">+</button>
+          </div>
+        </div>
+
+        <div id="cfgMsg" class="msg info" aria-live="polite"></div>
+
+        <div class="btns">
+          <button class="btn btn-danger" id="btnNovo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            Novo sorteio
+          </button>
+        </div>
+
+        <div class="rules">
+          <b>Regras de imparcialidade</b>
+          <ul>
+            <li>Gerador criptográfico do navegador (<i>crypto.getRandomValues</i>), sem viés de módulo: todos têm exatamente a mesma chance.</li>
+            <li>Quem já foi sorteado sai da lista e <b>não se repete</b>.</li>
+            <li>A lista é <b>lacrada</b> no primeiro sorteio e não pode ser alterada até um novo sorteio.</li>
+            <li>O resultado é gravado antes da animação; recarregar a página não refaz o sorteio.</li>
+            <li>Ausente? Marque-o: ele não volta para a lista e você sorteia outro.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Palco + histórico -->
+    <section>
+      <div class="card stage" aria-label="Palco do sorteio">
+        <div class="stage-top">
+          <span class="badge-gold">Sorteio</span>
+          <span class="counter" id="counter"></span>
+        </div>
+        <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+
+        <div class="display" id="display" aria-live="assertive"></div>
+
+        <svg class="swoosh" viewBox="0 0 420 14" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="sw" x1="0" x2="1"><stop offset="0" stop-color="#f3b52a" stop-opacity="0"/><stop offset=".5" stop-color="#f3b52a"/><stop offset="1" stop-color="#e39a12" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0 12 C120 2, 300 2, 420 8" stroke="url(#sw)" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </svg>
+
+        <button class="draw-btn" id="btnSortear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
+          <span id="lblSortear">Sortear</span>
+        </button>
+        <div class="kbd-hint">Atalho: <kbd>Espaço</kbd> ou <kbd>Enter</kbd> para sortear · <kbd>F</kbd> modo apresentação</div>
+      </div>
+
+      <div class="card hist">
+        <div class="card-h">
+          <h2>Resultados</h2>
+          <div class="hist-actions">
+            <button class="mini" id="btnCsv" title="Baixar resultados em planilha">Baixar CSV</button>
+            <button class="mini" id="btnAta" title="Imprimir ou salvar em PDF">Imprimir ata</button>
+          </div>
+        </div>
+        <div class="card-b">
+          <ol class="hist-list" id="histList"></ol>
+          <details class="pool" id="poolBox">
+            <summary id="poolSummary">Ver lista de participantes</summary>
+            <div class="pool-list" id="poolList"></div>
+          </details>
+          <div class="integrity" id="integrity"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <img src="assets/logo-ejud.png" alt="">
+    <div>Escola Judicial do Tribunal de Justiça do Estado do Amazonas<br>Encerramento do Ano Letivo 2026 · Palestra “O Mérito de Servir”</div>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<section id="ata" aria-hidden="true"></section>
+
+<script>
+(() => {
+'use strict';
+const KEY = 'sorteio-ejud-tjam-2026-v1';
+const MAX_RANGE = 1000000;
+const $ = (s) => document.querySelector(s);
+
+/* ---------- Aleatoriedade imparcial ---------- */
+// Inteiro uniforme em [0, n) usando CSPRNG com amostragem por rejeição (sem viés de módulo).
+function randInt(n) {
+  if (!Number.isInteger(n) || n <= 0) throw new Error('n inválido');
+  const buf = new Uint32Array(1);
+  const limit = Math.floor(0x100000000 / n) * n;
+  let x;
+  do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
+  return x % n;
+}
+
+/* ---------- Estado ---------- */
+function fresh() {
+  return {
+    mode: 'numeros',
+    cfg: { min: 1, max: 100, excluir: '', nomes: '', dedup: true, qtd: 1 },
+    locked: false, lockedAt: null, hash: '', pool: null, history: []
+  };
+}
+let S = load();
+let pool = [];       // participantes (lista lacrada ou prévia)
+let remaining = [];  // ainda não sorteados
+let animating = false;
+let soundOn = true;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const s = JSON.parse(raw); if (s && s.cfg && Array.isArray(s.history)) return Object.assign(fresh(), s); }
+  } catch (e) {}
+  return fresh();
+}
+function save() {
+  try {
+    const data = Object.assign({}, S);
+    data.pool = (S.locked && S.mode === 'nomes') ? pool : null; // números são reconstruídos pela configuração
+    localStorage.setItem(KEY, JSON.stringify(data));
+  } catch (e) { toast('Atenção: não foi possível salvar no navegador.'); }
+}
+
+/* ---------- Construção da lista ---------- */
+function parseExcluir(txt, min, max) {
+  const out = new Set(); const bad = [];
+  (txt || '').split(/[,;\s]+/).filter(Boolean).forEach(tok => {
+    const m = tok.match(/^(-?\d+)\s*-\s*(-?\d+)$/) || tok.match(/^(\d+)-(\d+)$/);
+    if (m) {
+      let a = +m[1], b = +m[2]; if (a > b) [a, b] = [b, a];
+      a = Math.max(a, min); b = Math.min(b, max);
+      for (let i = a; i <= b; i++) out.add(i);
+    } else if (/^-?\d+$/.test(tok)) out.add(+tok);
+    else bad.push(tok);
+  });
+  return { set: out, bad };
+}
+function normalizeName(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+// Retorna { list, error, info }
+function buildPool() {
+  const c = S.cfg;
+  if (S.mode === 'numeros') {
+    const min = Number(c.min), max = Number(c.max);
+    if (!Number.isInteger(min) || !Number.isInteger(max)) return { error: 'Informe números inteiros para o intervalo.' };
+    if (min > max) return { error: 'O número inicial deve ser menor ou igual ao final.' };
+    if (max - min + 1 > MAX_RANGE) return { error: 'Intervalo muito grande (máximo de 1.000.000 números).' };
+    const ex = parseExcluir(c.excluir, min, max);
+    if (ex.bad.length) return { error: 'Não entendi: ' + ex.bad.slice(0, 3).join(', ') };
+    const list = [];
+    for (let i = min; i <= max; i++) if (!ex.set.has(i)) list.push(String(i));
+    if (!list.length) return { error: 'Nenhum número restou para sortear.' };
+    const exCount = (max - min + 1) - list.length;
+    return { list, info: `${fmt(list.length)} números participando` + (exCount ? ` (${fmt(exCount)} excluídos)` : '') };
+  } else {
+    const lines = (c.nomes || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    let list = lines, dup = 0;
+    if (c.dedup) {
+      const seen = new Set(); list = [];
+      lines.forEach(n => { const k = normalizeName(n); if (seen.has(k)) dup++; else { seen.add(k); list.push(n); } });
+    } else {
+      // mantém homônimos distintos, identificando-os
+      const cnt = {}; lines.forEach(n => { const k = normalizeName(n); cnt[k] = (cnt[k] || 0) + 1; });
+      const seq = {}; list = lines.map(n => { const k = normalizeName(n); if (cnt[k] > 1) { seq[k] = (seq[k] || 0) + 1; return `${n} (${seq[k]})`; } return n; });
+    }
+    if (!list.length) return { error: 'Adicione pelo menos um nome.' };
+    let info = `${fmt(list.length)} participante${list.length > 1 ? 's' : ''}`;
+    if (dup) info += ` · ${dup} repetido${dup > 1 ? 's' : ''} ignorado${dup > 1 ? 's' : ''}`;
+    return { list, info, warn: dup > 0 };
+  }
+}
+
+function rebuildFromState() {
+  if (S.locked) {
+    if (S.mode === 'nomes' && Array.isArray(S.pool)) pool = S.pool.slice();
+    else { const r = buildPool(); pool = r.list || []; }
+    const drawn = new Set(S.history.map(h => h.v));
+    remaining = pool.filter(v => !drawn.has(v));
+  } else {
+    const r = buildPool(); pool = r.list || []; remaining = pool.slice();
+  }
+}
+
+async function sha256(text) {
+  try {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) { return ''; }
+}
+
+/* ---------- Ações ---------- */
+async function lock() {
+  const r = buildPool();
+  if (r.error) { showCfgMsg(r.error, true); toast(r.error); return false; }
+  pool = r.list; remaining = pool.slice();
+  S.locked = true; S.lockedAt = new Date().toISOString(); S.history = [];
+  S.hash = await sha256(JSON.stringify({ modalidade: S.mode, participantes: pool }));
+  save(); renderAll();
+  toast(`Lista lacrada com ${fmt(pool.length)} participante${pool.length > 1 ? 's' : ''}.`);
+  return true;
+}
+
+async function draw() {
+  if (animating) return;
+  ensureAudio();
+  if (!S.locked) { const ok = await lock(); if (!ok) return; }
+  if (!remaining.length) { toast('Todos os participantes já foram sorteados.'); return; }
+  const qtd = Math.max(1, Math.min(Number(S.cfg.qtd) || 1, remaining.length));
+  const results = [];
+  for (let i = 0; i < qtd; i++) {
+    const idx = randInt(remaining.length);
+    results.push(remaining[idx]);
+    remaining[idx] = remaining[remaining.length - 1];
+    remaining.pop();
+  }
+  // Grava antes de animar: o resultado é definitivo.
+  const now = new Date().toISOString();
+  const startOrd = S.history.length + 1;
+  results.forEach((v, i) => S.history.push({ o: startOrd + i, v, t: now, a: false }));
+  save();
+  await animate(results, startOrd);
+  renderAll();
+}
+
+function newRaffle() {
+  if (animating) return;
+  if (S.locked && S.history.length && !confirm('Iniciar um novo sorteio?\n\nOs resultados atuais serão apagados. Baixe o CSV ou imprima a ata antes, se precisar.')) return;
+  S.locked = false; S.lockedAt = null; S.hash = ''; S.history = []; S.pool = null;
+  save(); rebuildFromState(); renderAll(); renderIdle();
+  toast('Pronto para um novo sorteio. A lista pode ser editada.');
+}
+
+function toggleAbsent(ord) {
+  const h = S.history.find(x => x.o === ord); if (!h) return;
+  h.a = !h.a; save(); renderHistory();
+  toast(h.a ? `“${h.v}” marcado como ausente. Não volta para a lista — sorteie novamente.` : `Marcação de ausente removida de “${h.v}”.`);
+}
+
+/* ---------- Animação ---------- */
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+function sizeFor(text, count) {
+  const len = String(text).length;
+  let base = count === 1 ? 120 : count <= 3 ? 74 : count <= 6 ? 54 : 38;
+  if (len > 6) base *= Math.max(0.32, Math.min(1, 9 / len));
+  if (document.body.classList.contains('present')) base *= 1.25;
+  return Math.max(18, Math.round(base));
+}
+function cardHTML(ord, count) {
+  return `<div class="res rolling"><span class="ord">${ord}º sorteado</span><div class="val" style="font-size:${sizeFor('00000', count)}px">—</div></div>`;
+}
+async function animate(results, startOrd) {
+  animating = true; setDrawEnabled();
+  const disp = $('#display'); const n = results.length;
+  disp.innerHTML = results.map((_, i) => cardHTML(startOrd + i, n)).join('');
+  const cards = [...disp.querySelectorAll('.res')];
+  const sample = pool.length ? pool : results;
+  const show = (card, txt) => { const v = card.querySelector('.val'); v.textContent = txt; v.style.fontSize = sizeFor(txt, n) + 'px'; };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const total = reduce ? 300 : 2600, stagger = n > 1 ? Math.min(600, 3000 / n) : 0;
+  const t0 = performance.now(); const stopAt = cards.map((_, i) => total + i * stagger);
+  const stopped = new Array(n).fill(false);
+  let delay = 45;
+  while (stopped.includes(false)) {
+    const el = performance.now() - t0;
+    cards.forEach((card, i) => {
+      if (stopped[i]) return;
+      if (el >= stopAt[i]) {
+        stopped[i] = true; show(card, results[i]);
+        card.classList.remove('rolling'); card.classList.add('done'); chime(n === 1 || i === n - 1);
+      } else {
+        // apenas efeito visual (o resultado já foi definido)
+        show(card, sample[Math.floor(Math.random() * sample.length)]);
+      }
+    });
+    tick();
+    const progress = Math.min(1, el / (total + (n - 1) * stagger));
+    delay = 45 + 230 * progress * progress;
+    await sleep(delay);
+  }
+  confetti();
+  animating = false; setDrawEnabled();
+}
+
+/* ---------- Renderização ---------- */
+const fmt = (n) => Number(n).toLocaleString('pt-BR');
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const fmtDateTime = (iso) => new Date(iso).toLocaleString('pt-BR');
+
+function showCfgMsg(text, isErr) { const m = $('#cfgMsg'); m.textContent = text || ''; m.className = 'msg ' + (isErr ? 'err' : 'info'); }
+
+function renderConfig() {
+  const c = S.cfg, L = S.locked;
+  $('#tabNum').setAttribute('aria-selected', S.mode === 'numeros');
+  $('#tabNome').setAttribute('aria-selected', S.mode === 'nomes');
+  $('#cfgNum').hidden = S.mode !== 'numeros';
+  $('#cfgNome').hidden = S.mode !== 'nomes';
+  for (const [id, val] of [['min', c.min], ['max', c.max], ['excluir', c.excluir], ['nomes', c.nomes]]) {
+    const el = $('#' + id); if (document.activeElement !== el) el.value = val;
+  }
+  $('#dedup').checked = !!c.dedup;
+  $('#qtd').value = c.qtd;
+  ['#min', '#max', '#excluir', '#nomes', '#dedup', '#arquivo'].forEach(s => $(s).disabled = L);
+  $('#tabNum').disabled = L && S.mode !== 'numeros';
+  $('#tabNome').disabled = L && S.mode !== 'nomes';
+  $('.file-btn').style.display = L ? 'none' : '';
+  const pill = $('#statusPill');
+  pill.className = 'pill ' + (L ? 'lock' : 'ok');
+  pill.textContent = L ? '🔒 Lista lacrada' : 'Aberto para edição';
+  if (L) showCfgMsg(`Lacrada em ${fmtDateTime(S.lockedAt)} com ${fmt(pool.length)} participantes. Para alterar, inicie um novo sorteio.`, false);
+  else { const r = buildPool(); r.error ? showCfgMsg(r.error, true) : showCfgMsg(r.info, false); }
+  updateQtdButtons();
+}
+function updateQtdButtons() {
+  const max = Math.max(1, remaining.length || pool.length || 1);
+  $('#qtdMenos').disabled = S.cfg.qtd <= 1;
+  $('#qtdMais').disabled = S.cfg.qtd >= max;
+}
+
+function renderCounter() {
+  const total = pool.length, drawn = S.locked ? S.history.length : 0, rest = S.locked ? remaining.length : total;
+  $('#counter').innerHTML = total ? `<b>${fmt(rest)}</b> restante${rest !== 1 ? 's' : ''} de ${fmt(total)} · <b>${fmt(drawn)}</b> sorteado${drawn !== 1 ? 's' : ''}` : 'Configure os participantes';
+  $('#bar').style.width = total ? (drawn / total * 100) + '%' : '0';
+}
+function setDrawEnabled() {
+  const btn = $('#btnSortear');
+  const done = S.locked && remaining.length === 0;
+  btn.disabled = animating || done || (!S.locked && !pool.length);
+  $('#lblSortear').textContent = animating ? 'Sorteando…' : done ? 'Todos sorteados' : (S.history.length ? 'Sortear novamente' : 'Sortear');
+}
+function renderIdle() {
+  const disp = $('#display');
+  if (S.locked && S.history.length) {
+    // mostra o(s) último(s) sorteado(s)
+    const lastT = S.history[S.history.length - 1].t;
+    const last = S.history.filter(h => h.t === lastT);
+    disp.innerHTML = last.map(h => `<div class="res done"><span class="ord">${h.o}º sorteado</span><div class="val" style="font-size:${sizeFor(h.v, last.length)}px">${esc(h.v)}</div></div>`).join('');
+    if (remaining.length === 0) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Todos os participantes foram sorteados.</div>`);
+  } else {
+    disp.innerHTML = `<div class="idle"><div class="big">Boa sorte!</div><p>${S.mode === 'numeros' ? 'Sorteio por número' : 'Sorteio por nome'} · clique em <b>Sortear</b> para começar</p></div>`;
+  }
+}
+function renderHistory() {
+  const ul = $('#histList');
+  if (!S.history.length) { ul.innerHTML = `<li class="empty">Nenhum resultado ainda.</li>`; }
+  else {
+    ul.innerHTML = S.history.slice().reverse().map(h => `
+      <li class="hist-item ${h.a ? 'absent' : ''}">
+        <span class="n">${h.o}º</span>
+        <div><div class="v">${esc(h.v)}</div><div class="t">${fmtTime(h.t)}${h.a ? ' · ausente' : ''}</div></div>
+        <button class="mini ${h.a ? 'on' : ''}" data-abs="${h.o}">${h.a ? 'Desfazer ausente' : 'Ausente'}</button>
+      </li>`).join('');
+  }
+  $('#btnCsv').disabled = $('#btnAta').disabled = !S.history.length;
+  // lista de participantes
+  const drawn = new Set(S.history.map(h => h.v));
+  const shown = pool.slice(0, 2000);
+  $('#poolSummary').textContent = `Ver lista de participantes (${fmt(pool.length)})`;
+  $('#poolList').innerHTML = shown.map(v => `<span class="chip ${drawn.has(v) ? 'out' : ''}">${esc(v)}</span>`).join('') +
+    (pool.length > shown.length ? `<span class="chip">… e mais ${fmt(pool.length - shown.length)}</span>` : '');
+  $('#integrity').innerHTML = S.locked && S.hash ? `Código de integridade da lista (SHA-256): <code>${S.hash}</code>` : '';
+}
+function renderAll() { renderConfig(); renderCounter(); setDrawEnabled(); renderHistory(); }
+
+/* ---------- Exportação ---------- */
+function exportCsv() {
+  const rows = [['Ordem', 'Resultado', 'Data/Hora', 'Situação']].concat(
+    S.history.map(h => [h.o + 'º', h.v, fmtDateTime(h.t), h.a ? 'Ausente' : 'Sorteado']));
+  const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `sorteio-ejud-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function printAta() {
+  const c = S.cfg;
+  const mod = S.mode === 'numeros'
+    ? `Por número — de ${c.min} a ${c.max}${c.excluir ? ` (excluídos: ${esc(c.excluir)})` : ''}`
+    : `Por nome — ${fmt(pool.length)} participantes`;
+  $('#ata').innerHTML = `
+    <header><img src="${$('.brand img').src}" alt=""><div><h1>Ata de Sorteio</h1>
+      <div>EJUD/TJAM · Encerramento do Ano Letivo 2026 · Palestra “O Mérito de Servir”</div></div></header>
+    <div class="meta">
+      <div><b>Modalidade:</b> ${mod}</div>
+      <div><b>Total de participantes:</b> ${fmt(pool.length)}</div>
+      <div><b>Lista lacrada em:</b> ${fmtDateTime(S.lockedAt)}</div>
+      <div><b>Emitida em:</b> ${fmtDateTime(new Date().toISOString())}</div>
+      <div><b>Método:</b> gerador criptográfico do navegador (crypto.getRandomValues) com amostragem por rejeição, sem reposição.</div>
+      <div><b>Código de integridade (SHA-256):</b> <span class="hash">${S.hash || '—'}</span></div>
+    </div>
+    <h2>Resultados</h2>
+    <table><thead><tr><th>Ordem</th><th>Resultado</th><th>Data/Hora</th><th>Situação</th></tr></thead>
+    <tbody>${S.history.map(h => `<tr><td>${h.o}º</td><td>${esc(h.v)}</td><td>${fmtDateTime(h.t)}</td><td>${h.a ? 'Ausente' : 'Sorteado'}</td></tr>`).join('')}</tbody></table>
+    <div class="sign"><div>Responsável pelo sorteio</div><div>Testemunha</div></div>`;
+  window.print();
+}
+
+/* ---------- Som ---------- */
+let actx = null;
+function ensureAudio() { if (!soundOn) return; try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) {} }
+function beep(freq, dur, vol, when = 0, type = 'sine') {
+  if (!soundOn || !actx) return;
+  const t = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+}
+function tick() { beep(1100, .03, .03, 0, 'square'); }
+function chime(big) { [523.25, 659.25, 783.99, big ? 1046.5 : null].filter(Boolean).forEach((f, i) => beep(f, .5, .12, i * .09, 'triangle')); }
+
+/* ---------- Confete ---------- */
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = $('#confetti'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  const colors = ['#f3b52a', '#ffd766', '#1d86cf', '#0f8a3c', '#0f2160', '#e39a12'];
+  const P = Array.from({ length: 180 }, () => ({
+    x: innerWidth / 2 + (Math.random() - .5) * 200, y: innerHeight * .45,
+    vx: (Math.random() - .5) * 16, vy: -Math.random() * 16 - 4, r: Math.random() * 6 + 4,
+    c: colors[Math.floor(Math.random() * colors.length)], rot: Math.random() * 6, vr: (Math.random() - .5) * .3
+  }));
+  const t0 = performance.now();
+  (function frame(t) {
+    const el = t - t0; ctx.clearRect(0, 0, innerWidth, innerHeight);
+    P.forEach(p => { p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.max(0, 1 - el / 3200);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); ctx.restore(); });
+    if (el < 3200) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  })(t0);
+}
+
+/* ---------- Toast ---------- */
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+
+/* ---------- Apresentação ---------- */
+function togglePresent() {
+  const on = !document.body.classList.contains('present');
+  document.body.classList.toggle('present', on);
+  $('#lblApresentar').textContent = on ? 'Sair' : 'Apresentar';
+  try { if (on && !document.fullscreenElement) document.documentElement.requestFullscreen(); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+  if (!animating) renderIdle();
+}
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && document.body.classList.contains('present')) {
+    document.body.classList.remove('present'); $('#lblApresentar').textContent = 'Apresentar'; if (!animating) renderIdle();
+  }
+});
+
+/* ---------- Eventos ---------- */
+function onCfgChange() {
+  if (S.locked) return;
+  rebuildFromState();
+  S.cfg.qtd = Math.max(1, Math.min(S.cfg.qtd, Math.max(1, pool.length)));
+  save(); renderAll(); if (!animating) renderIdle();
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  if (S.locked || animating) return; S.mode = b.dataset.mode; onCfgChange();
+}));
+['min', 'max'].forEach(id => $('#' + id).addEventListener('input', e => { S.cfg[id] = e.target.value === '' ? '' : Number(e.target.value); onCfgChange(); }));
+$('#excluir').addEventListener('input', e => { S.cfg.excluir = e.target.value; onCfgChange(); });
+$('#nomes').addEventListener('input', e => { S.cfg.nomes = e.target.value; onCfgChange(); });
+$('#dedup').addEventListener('change', e => { S.cfg.dedup = e.target.checked; onCfgChange(); });
+$('#arquivo').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const txt = await f.text();
+  const names = txt.split(/\r?\n/).map(l => {
+    let cell = l.split(/[;,\t]/)[0] || ''; return cell.replace(/^"|"$/g, '').trim();
+  }).filter(Boolean);
+  if (names.length && /^(nome|nomes|participante|participantes)$/i.test(names[0])) names.shift();
+  S.cfg.nomes = (S.cfg.nomes.trim() ? S.cfg.nomes.trim() + '\n' : '') + names.join('\n');
+  $('#nomes').value = S.cfg.nomes; e.target.value = '';
+  onCfgChange(); toast(`${names.length} nome${names.length !== 1 ? 's' : ''} importado${names.length !== 1 ? 's' : ''}.`);
+});
+function setQtd(v) {
+  const max = Math.max(1, S.locked ? remaining.length : pool.length);
+  S.cfg.qtd = Math.max(1, Math.min(Math.floor(Number(v) || 1), max)); $('#qtd').value = S.cfg.qtd; save(); updateQtdButtons();
+}
+$('#qtdMenos').addEventListener('click', () => setQtd(S.cfg.qtd - 1));
+$('#qtdMais').addEventListener('click', () => setQtd(S.cfg.qtd + 1));
+$('#qtd').addEventListener('change', e => setQtd(e.target.value));
+$('#btnSortear').addEventListener('click', draw);
+$('#btnNovo').addEventListener('click', newRaffle);
+$('#btnCsv').addEventListener('click', exportCsv);
+$('#btnAta').addEventListener('click', printAta);
+$('#btnApresentar').addEventListener('click', togglePresent);
+$('#histList').addEventListener('click', e => { const b = e.target.closest('[data-abs]'); if (b) toggleAbsent(Number(b.dataset.abs)); });
+$('#btnSom').addEventListener('click', () => {
+  soundOn = !soundOn; ensureAudio();
+  $('#btnSom').style.opacity = soundOn ? 1 : .5; toast(soundOn ? 'Som ativado' : 'Som desativado');
+});
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (['input', 'textarea', 'select'].includes(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === ' ' || e.key === 'Enter') { if (tag === 'button' && e.target.id !== 'btnSortear') return; e.preventDefault(); draw(); }
+  else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); togglePresent(); }
+});
+window.addEventListener('storage', e => { if (e.key === KEY && !animating) { S = load(); rebuildFromState(); renderAll(); renderIdle(); } });
+
+// Exposto apenas para auditoria/testes
+window.SorteioEJUD = { randInt, estado: () => JSON.parse(JSON.stringify(S)), restantes: () => remaining.slice() };
+
+/* ---------- Início ---------- */
+rebuildFromState(); renderAll(); renderIdle();
+})();
+</script>
+</body>
+</html>
