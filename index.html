@@ -333,7 +333,7 @@ body.telao .brand img{height:84px}
               <input type="number" id="limite" min="1" step="1" aria-label="Total de sorteados">
               <button type="button" id="limMais" aria-label="Aumentar limite">+</button>
             </div>
-            <div class="hint">Ao atingir o limite, o sorteio encerra. Marcar alguém como ausente libera a vaga (−1 +1) e o substituto é sorteado.</div>
+            <div class="hint">Ao atingir o limite, o sorteio encerra. Marcar alguém como ausente libera a vaga (−1 +1); o substituto é sorteado no botão Sortear.</div>
           </div>
         </div>
 
@@ -354,7 +354,7 @@ body.telao .brand img{height:84px}
             <li>Com limite, o sorteio encerra ao preencher as vagas; um ausente libera a vaga para o substituto.</li>
             <li>A lista é <b>lacrada</b> no primeiro sorteio e não pode ser alterada até um novo sorteio.</li>
             <li>O resultado é gravado antes da animação; recarregar a página não refaz o sorteio.</li>
-            <li>Ausente? Marque-o: ele não volta para a lista e um <b>substituto é sorteado automaticamente</b> (se restar só um, ele é chamado direto).</li>
+            <li>Ausente? Marque-o: ele não volta para a lista e a vaga fica liberada. Marque todos os ausentes e depois clique em <b>Sortear</b> para sortear os substitutos (todos juntos ou um de cada vez, conforme o modo).</li>
           </ul>
         </div>
       </div>
@@ -612,6 +612,9 @@ async function lock() {
 }
 
 function roundActive() { return S.round && S.round.done < S.round.size; }
+const normalRoundActive = () => roundActive() && !S.round.sub;
+const subRoundActive = () => roundActive() && !!S.round.sub;
+const pendingAbs = () => S.history.filter(h => h.a && !h.subBy); // ausentes aguardando substituto
 const hasLimit = () => !!S.cfg.limitar && Number(S.cfg.limite) > 0;
 const validCount = () => S.history.filter(h => !h.a).length;
 const slotsLeft = () => hasLimit() ? Math.max(0, Number(S.cfg.limite) - validCount()) : Infinity;
@@ -622,13 +625,15 @@ async function draw() {
   ensureAudio();
   if (!S.locked) { const ok = await lock(); if (!ok) return; }
   if (!remaining.length) { toast('Todos os participantes já foram sorteados.'); return; }
+  const pend = pendingAbs();
+  if (pend.length) { await drawSubstitutes(pend); return; }
   if (slotsLeft() <= 0) { toast(`Limite de ${S.cfg.limite} sorteados atingido. Marque um ausente para liberar uma vaga.`); return; }
   const qtd = Math.max(1, Number(S.cfg.qtd) || 1);
   const now = new Date().toISOString();
   let items;
   if (S.cfg.modoQtd === 'um' && qtd > 1) {
     // Um de cada vez: cada clique sorteia o próximo da rodada
-    if (!roundActive()) S.round = { size: Math.min(qtd, remaining.length, slotsLeft()), done: 0, b: nextBatch() };
+    if (!normalRoundActive()) S.round = { size: Math.min(qtd, remaining.length, slotsLeft()), done: 0, b: nextBatch() };
     const o = S.history.length + 1;
     S.history.push({ o, v: pickOne(), t: now, a: false, b: S.round.b });
     S.round.done++;
@@ -649,30 +654,50 @@ async function draw() {
   renderAll();
 }
 
-async function absent(ord) {
-  if (TELAO || animating) return;
-  const h = histBy(ord); if (!h) return;
-  if (h.a) {
-    if (h.subBy) return; // já existe substituto: a ausência fica registrada
-    h.a = false; save(); notify(); renderHistory(); renderIdle();
-    toast(`Marcação de ausente removida de “${h.v}”.`);
-    return;
+// Sorteia os substitutos dos ausentes pendentes, conforme o modo (todos juntos ou um de cada vez).
+async function drawSubstitutes(pend) {
+  const total = Math.min(pend.length, remaining.length);
+  const now = new Date().toISOString();
+  let items;
+  if (S.cfg.modoQtd === 'um' && total > 1 || subRoundActive()) {
+    if (!subRoundActive()) S.round = { size: total, done: 0, b: nextBatch(), sub: true };
+    const target = pend[0], o = S.history.length + 1;
+    S.history.push({ o, v: pickOne(), t: now, a: false, b: S.round.b, sub: target.o });
+    target.subBy = o; S.round.done++;
+    items = S.history.filter(h => h.b === S.round.b).map(h => itemFrom(h, h.o !== o));
+  } else {
+    S.round = null;
+    const b = nextBatch(); items = [];
+    for (let i = 0; i < total; i++) {
+      const target = pend[i], o = S.history.length + 1;
+      const h = { o, v: pickOne(), t: now, a: false, b, sub: target.o };
+      S.history.push(h); target.subBy = o; items.push(itemFrom(h, false));
+    }
   }
-  const msg = remaining.length > 1 ? 'Um substituto será sorteado automaticamente entre os que restam.'
-    : remaining.length === 1 ? `Resta apenas 1 participante (${remaining[0]}), que será chamado automaticamente.`
-    : 'Não há mais participantes para substituir.';
-  if (!confirm(`Marcar “${h.v}” como ausente?\n\n${msg}\n\nQuem é marcado como ausente não volta para a lista.`)) return;
-  ensureAudio();
-  h.a = true;
-  if (!remaining.length) { save(); notify(); renderAll(); renderIdle(); toast(`“${h.v}” marcado como ausente. Não há mais ninguém para sortear.`); return; }
-  const o = S.history.length + 1;
-  S.history.push({ o, v: pickOne(), t: new Date().toISOString(), a: false, b: nextBatch(), sub: h.o });
-  h.subBy = o;
   save();
-  const items = [itemFrom(histBy(o), false)];
   broadcast({ t: 'anim', items });
   await animate(items);
   renderAll();
+}
+
+// Marca/desmarca ausente. Não sorteia na hora: a vaga fica liberada para o botão Sortear.
+function absent(ord) {
+  if (TELAO || animating) return;
+  const h = histBy(ord); if (!h) return;
+  if (h.a) {
+    if (h.subBy) return; // substituto já sorteado: a ausência fica registrada
+    h.a = false;
+    if (subRoundActive()) S.round.size = Math.min(S.round.size, S.round.done + pendingAbs().length);
+    save(); notify(); renderAll(); renderIdle();
+    toast(`Marcação de ausente removida de “${h.v}”.`);
+    return;
+  }
+  h.a = true;
+  save(); notify(); renderAll(); renderIdle();
+  const n = pendingAbs().length;
+  toast(remaining.length
+    ? `“${h.v}” marcado como ausente. ${n} vaga${n > 1 ? 's' : ''} para substituto — clique em Sortear.`
+    : `“${h.v}” marcado como ausente. Não há mais participantes para substituir.`);
 }
 
 function newRaffle() {
@@ -805,8 +830,14 @@ function setDrawEnabled() {
   btn.disabled = animating || done || lim || (!S.locked && !pool.length);
   let lbl = S.history.length ? 'Sortear novamente' : 'Sortear';
   const qtd = Number(S.cfg.qtd) || 1;
-  if (S.cfg.modoQtd === 'um' && qtd > 1 && !done && !lim) {
-    if (roundActive()) lbl = `Sortear ${S.round.done + 1}º de ${S.round.size}`;
+  const pend = S.locked ? pendingAbs().length : 0;
+  if (pend && !done) {
+    const tot = Math.min(pend, remaining.length);
+    if (subRoundActive()) lbl = `Sortear substituto ${S.round.done + 1}º de ${S.round.size}`;
+    else if (tot === 1) lbl = 'Sortear substituto';
+    else lbl = S.cfg.modoQtd === 'um' ? `Sortear substituto 1º de ${tot}` : `Sortear ${tot} substitutos`;
+  } else if (S.cfg.modoQtd === 'um' && qtd > 1 && !done && !lim) {
+    if (normalRoundActive()) lbl = `Sortear ${S.round.done + 1}º de ${S.round.size}`;
     else lbl = `Sortear 1º de ${Math.min(qtd, S.locked ? remaining.length : pool.length || qtd, slotsLeft())}`;
   }
   $('#lblSortear').textContent = animating ? 'Sorteando…' : lim ? 'Sorteio encerrado' : done ? 'Todos sorteados' : lbl;
@@ -818,7 +849,9 @@ function renderIdle() {
     const key = (h) => h.b != null ? 'b' + h.b : 't' + h.t;
     const batch = S.history.filter(h => key(h) === key(last));
     disp.innerHTML = batch.map(h => cardHTML(itemFrom(h, true), batch.length, true)).join('');
-    if (limitDone()) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Sorteio encerrado: ${S.cfg.limite} de ${S.cfg.limite} vagas preenchidas.</div>`);
+    const np = pendingAbs().length;
+    if (np && remaining.length) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--navy);font-weight:700">${np} ausente${np > 1 ? 's' : ''} aguardando substituto</div>`);
+    else if (limitDone()) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Sorteio encerrado: ${S.cfg.limite} de ${S.cfg.limite} vagas preenchidas.</div>`);
     else if (remaining.length === 0) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Todos os participantes foram sorteados.</div>`);
   } else {
     const sub = TELAO ? 'Aguardando o sorteio…' : `${S.mode === 'numeros' ? 'Sorteio por número' : 'Sorteio por nome'} · clique em <b>Sortear</b> para começar`;

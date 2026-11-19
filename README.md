@@ -6,9 +6,9 @@ Página de sorteio por **número** ou por **nome** para a palestra *“O Mérito
 ## Como usar
 1. Escolha **Por número** (intervalo + números excluídos) ou **Por nome** (um nome por linha, ou importe um `.txt`/`.csv`).
 2. Defina a **quantidade por sorteio**. Com mais de 1, escolha **Todos de uma vez** ou **Um de cada vez** (cada clique revela o próximo da rodada).
-3. Opcional: marque **Limitar o total de sorteados** e defina o número de vagas. Ao preencher as vagas, o sorteio encerra; marcar um ausente libera a vaga (−1 +1) e o substituto é sorteado.
+3. Opcional: marque **Limitar o total de sorteados** e defina o número de vagas. Ao preencher as vagas, o sorteio encerra; marcar um ausente libera a vaga (−1 +1).
 4. Clique em **Sortear** (ou tecle `Espaço`/`Enter`). `F` abre o modo apresentação em tela cheia.
-5. Se a pessoa sorteada não estiver presente, clique em **Ausente**: um substituto é sorteado automaticamente. Se restar só uma pessoa, ela é chamada direto.
+5. Se a pessoa sorteada não estiver presente, clique em **Ausente**. Dá para marcar vários e depois clicar em **Sortear** para sortear os substitutos: todos juntos ou um de cada vez, conforme o modo. Enquanto o substituto não foi sorteado, a marcação pode ser desfeita.
 6. Ao final, **Baixar CSV** ou **Imprimir ata** (pode salvar como PDF).
 
 ## Telão (2ª tela)
