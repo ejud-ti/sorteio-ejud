@@ -5,10 +5,13 @@ Página de sorteio por **número** ou por **nome** para a palestra *“O Mérito
 
 ## Como usar
 1. Escolha **Por número** (intervalo + números excluídos) ou **Por nome** (um nome por linha, ou importe um `.txt`/`.csv`).
-2. Defina a **quantidade por sorteio**.
+2. Defina a **quantidade por sorteio**. Com mais de 1, escolha **Todos de uma vez** ou **Um de cada vez** (cada clique revela o próximo da rodada).
 3. Clique em **Sortear** (ou tecle `Espaço`/`Enter`). `F` abre o modo apresentação em tela cheia.
-4. Se a pessoa sorteada não estiver presente, clique em **Ausente** e sorteie de novo.
+4. Se a pessoa sorteada não estiver presente, clique em **Ausente**: um substituto é sorteado automaticamente. Se restar só uma pessoa, ela é chamada direto.
 5. Ao final, **Baixar CSV** ou **Imprimir ata** (pode salvar como PDF).
+
+## Telão (2ª tela)
+Clique em **Telão** para abrir uma janela que mostra só o palco do sorteio. Arraste essa janela para o projetor ou a segunda tela e clique nela uma vez para entrar em tela cheia e ativar o som. Os sorteios feitos na janela principal aparecem no telão automaticamente. O ponto verde no botão indica que o telão está conectado; nesse caso o som toca só no telão. Também dá para abrir direto pelo endereço `.../?telao=1`.
 
 ## Regras de imparcialidade
 - Números aleatórios de `crypto.getRandomValues` (gerador criptográfico), com amostragem por rejeição, de modo que todos têm exatamente a mesma chance.
@@ -23,4 +26,4 @@ Settings → Pages → *Deploy from a branch* → `main` / root.
 ## Imagens
 - `assets/fundo.jpg`: fundo da página.
 - `assets/logo-ejud.png`: logo da EJUD.
-- `assets/fundo-celular.jpg` (opcional): fundo vertical para celular. Se o arquivo não existir, a página usa o `fundo.jpg`.
+- `assets/fundo-celular.jpg`: fundo vertical para celular (versão clara da ilustração).

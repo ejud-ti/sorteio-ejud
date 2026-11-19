@@ -196,6 +196,31 @@ body.present .brand img{height:76px}
   .icon-btn .lbl-t{display:none}
 }
 
+/* Som desativado */
+.icon-btn.muted{color:var(--warn);border-color:rgba(192,57,43,.35)}
+/* Modo de revelação */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:rgba(15,33,96,.07);border-radius:10px;padding:3px;margin-top:10px}
+.seg button{border:0;background:transparent;padding:8px 6px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--navy);box-shadow:0 2px 8px rgba(15,33,96,.12)}
+.res .note{font-size:13px;color:var(--muted);margin-top:6px;font-weight:600}
+.res.static{animation:none}
+.mini:disabled{opacity:.5;cursor:not-allowed}
+/* Telão */
+.dot{width:8px;height:8px;border-radius:50%;background:#b8bdd0;display:inline-block}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(15,138,60,.2)}
+body.telao main.grid{grid-template-columns:1fr}
+body.telao aside.config,body.telao .hist,body.telao footer,body.telao #btnSortear,body.telao .kbd-hint,
+body.telao .tools,body.telao .swoosh{display:none}
+body.telao .wrap{max-width:1600px;min-height:100vh;display:flex;flex-direction:column}
+body.telao main.grid{flex:1}
+body.telao .stage{min-height:calc(100vh - 170px);display:flex;flex-direction:column}
+body.telao .display{flex:1;min-height:0}
+body.telao .brand img{height:84px}
+#telaoStart{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;gap:18px;align-items:center;justify-content:center;
+  background:rgba(15,33,96,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);cursor:pointer;color:#fff;text-align:center;padding:16px}
+#telaoStart[hidden]{display:none}
+#telaoStart p{margin:0;font-weight:600;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.3)}
+
 /* Ata para impressão */
 #ata{display:none}
 @media print{
@@ -230,7 +255,11 @@ body.present .brand img{height:76px}
     </div>
     <div class="tools">
       <button class="icon-btn" id="btnSom" title="Ativar/desativar som" aria-label="Som">
-        <svg id="icoSom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+        <svg id="icoSom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+      <button class="icon-btn hide-present" id="btnTelao" title="Abrir o telão em outra janela (para a 2ª tela)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span class="lbl-t">Telão</span><span class="dot" id="telaoDot"></span>
       </button>
       <button class="icon-btn" id="btnApresentar" title="Modo apresentação (tela cheia)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -287,6 +316,13 @@ body.present .brand img{height:76px}
             <input type="number" id="qtd" min="1" step="1" aria-label="Quantidade por sorteio">
             <button type="button" id="qtdMais" aria-label="Aumentar">+</button>
           </div>
+          <div id="modoQtdBox" hidden>
+            <div class="seg" role="group" aria-label="Como revelar">
+              <button type="button" data-mq="juntos">Todos de uma vez</button>
+              <button type="button" data-mq="um">Um de cada vez</button>
+            </div>
+            <div class="hint" id="modoQtdHint"></div>
+          </div>
         </div>
 
         <div id="cfgMsg" class="msg info" aria-live="polite"></div>
@@ -305,7 +341,7 @@ body.present .brand img{height:76px}
             <li>Quem já foi sorteado sai da lista e <b>não se repete</b>.</li>
             <li>A lista é <b>lacrada</b> no primeiro sorteio e não pode ser alterada até um novo sorteio.</li>
             <li>O resultado é gravado antes da animação; recarregar a página não refaz o sorteio.</li>
-            <li>Ausente? Marque-o: ele não volta para a lista e você sorteia outro.</li>
+            <li>Ausente? Marque-o: ele não volta para a lista e um <b>substituto é sorteado automaticamente</b> (se restar só um, ele é chamado direto).</li>
           </ul>
         </div>
       </div>
@@ -360,6 +396,13 @@ body.present .brand img{height:76px}
   </footer>
 </div>
 
+<div id="telaoStart" hidden>
+  <button class="draw-btn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    Iniciar telão
+  </button>
+  <p>Clique para entrar em tela cheia e ativar o som.<br>Os sorteios feitos na outra janela aparecem aqui automaticamente.</p>
+</div>
 <div class="toast" id="toast" role="status"></div>
 
 <section id="ata" aria-hidden="true"></section>
@@ -368,7 +411,9 @@ body.present .brand img{height:76px}
 (() => {
 'use strict';
 const KEY = 'sorteio-ejud-tjam-2026-v1';
+const EVT = KEY + '-evt';
 const MAX_RANGE = 1000000;
+const TELAO = new URLSearchParams(location.search).has('telao');
 const $ = (s) => document.querySelector(s);
 
 /* ---------- Aleatoriedade imparcial ---------- */
@@ -386,24 +431,28 @@ function randInt(n) {
 function fresh() {
   return {
     mode: 'numeros',
-    cfg: { min: 1, max: 100, excluir: '', nomes: '', dedup: true, qtd: 1 },
-    locked: false, lockedAt: null, hash: '', pool: null, history: []
+    cfg: { min: 1, max: 100, excluir: '', nomes: '', dedup: true, qtd: 1, modoQtd: 'juntos' },
+    locked: false, lockedAt: null, hash: '', pool: null, history: [], round: null, som: true
   };
 }
 let S = load();
 let pool = [];       // participantes (lista lacrada ou prévia)
 let remaining = [];  // ainda não sorteados
 let animating = false;
-let soundOn = true;
+let telaoSeen = 0;   // último sinal do telão (aba/janela de exibição)
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.cfg && Array.isArray(s.history)) return Object.assign(fresh(), s); }
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && s.cfg && Array.isArray(s.history)) { const f = fresh(); return Object.assign(f, s, { cfg: Object.assign(f.cfg, s.cfg) }); }
+    }
   } catch (e) {}
   return fresh();
 }
 function save() {
+  if (TELAO) return; // o telão apenas exibe, nunca grava
   try {
     const data = Object.assign({}, S);
     data.pool = (S.locked && S.mode === 'nomes') ? pool : null; // números são reconstruídos pela configuração
@@ -411,11 +460,45 @@ function save() {
   } catch (e) { toast('Atenção: não foi possível salvar no navegador.'); }
 }
 
+/* ---------- Comunicação com o telão ---------- */
+const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('sorteio-ejud') : null;
+let lastMsgId = null;
+function broadcast(msg) {
+  msg.id = Date.now() + '-' + Math.random();
+  try { if (bc) bc.postMessage(msg); } catch (e) {}
+  try { localStorage.setItem(EVT, JSON.stringify(msg)); } catch (e) {}
+}
+function notify() { if (!TELAO) broadcast({ t: 'state' }); }
+let animQueue = Promise.resolve();
+function onMessage(msg) {
+  if (!msg || msg.id === lastMsgId) return;
+  lastMsgId = msg.id;
+  if (TELAO) {
+    if (msg.t === 'anim') {
+      animQueue = animQueue.then(async () => {
+        S = load(); rebuildFromState(); renderCounter();
+        await animate(msg.items);
+        renderAll();
+      });
+    } else if (msg.t === 'state') {
+      animQueue = animQueue.then(() => { S = load(); rebuildFromState(); renderAll(); renderIdle(); });
+    }
+  } else if (msg.t === 'ping') {
+    telaoSeen = Date.now(); renderTelaoStatus();
+  }
+}
+if (bc) bc.onmessage = (e) => onMessage(e.data);
+window.addEventListener('storage', (e) => {
+  if (e.key === EVT && e.newValue) { try { onMessage(JSON.parse(e.newValue)); } catch (err) {} }
+  else if (e.key === KEY && !TELAO && !animating) { S = load(); rebuildFromState(); renderAll(); renderIdle(); }
+});
+const telaoAlive = () => Date.now() - telaoSeen < 5000;
+
 /* ---------- Construção da lista ---------- */
 function parseExcluir(txt, min, max) {
   const out = new Set(); const bad = [];
   (txt || '').split(/[,;\s]+/).filter(Boolean).forEach(tok => {
-    const m = tok.match(/^(-?\d+)\s*-\s*(-?\d+)$/) || tok.match(/^(\d+)-(\d+)$/);
+    const m = tok.match(/^(-?\d+)-(-?\d+)$/);
     if (m) {
       let a = +m[1], b = +m[2]; if (a > b) [a, b] = [b, a];
       a = Math.max(a, min); b = Math.min(b, max);
@@ -432,7 +515,7 @@ function buildPool() {
   const c = S.cfg;
   if (S.mode === 'numeros') {
     const min = Number(c.min), max = Number(c.max);
-    if (!Number.isInteger(min) || !Number.isInteger(max)) return { error: 'Informe números inteiros para o intervalo.' };
+    if (c.min === '' || c.max === '' || !Number.isInteger(min) || !Number.isInteger(max)) return { error: 'Informe números inteiros para o intervalo.' };
     if (min > max) return { error: 'O número inicial deve ser menor ou igual ao final.' };
     if (max - min + 1 > MAX_RANGE) return { error: 'Intervalo muito grande (máximo de 1.000.000 números).' };
     const ex = parseExcluir(c.excluir, min, max);
@@ -456,7 +539,7 @@ function buildPool() {
     if (!list.length) return { error: 'Adicione pelo menos um nome.' };
     let info = `${fmt(list.length)} participante${list.length > 1 ? 's' : ''}`;
     if (dup) info += ` · ${dup} repetido${dup > 1 ? 's' : ''} ignorado${dup > 1 ? 's' : ''}`;
-    return { list, info, warn: dup > 0 };
+    return { list, info };
   }
 }
 
@@ -478,94 +561,149 @@ async function sha256(text) {
   } catch (e) { return ''; }
 }
 
-/* ---------- Ações ---------- */
+/* ---------- Sorteio ---------- */
+function pickOne() {
+  const idx = randInt(remaining.length);
+  const v = remaining[idx];
+  remaining[idx] = remaining[remaining.length - 1];
+  remaining.pop();
+  return v;
+}
+const nextBatch = () => S.history.reduce((m, h) => Math.max(m, h.b || 0), 0) + 1;
+const histBy = (o) => S.history.find(h => h.o === o);
+function itemFrom(h, isStatic) {
+  const orig = h.sub ? histBy(h.sub) : null;
+  return {
+    o: h.o, v: h.v, static: !!isStatic,
+    badge: h.sub ? `${h.o}º · substituto` : `${h.o}º sorteado`,
+    note: orig ? `no lugar de ${orig.v} (ausente)` : ''
+  };
+}
+
 async function lock() {
   const r = buildPool();
   if (r.error) { showCfgMsg(r.error, true); toast(r.error); return false; }
   pool = r.list; remaining = pool.slice();
-  S.locked = true; S.lockedAt = new Date().toISOString(); S.history = [];
+  S.locked = true; S.lockedAt = new Date().toISOString(); S.history = []; S.round = null;
   S.hash = await sha256(JSON.stringify({ modalidade: S.mode, participantes: pool }));
-  save(); renderAll();
+  save(); notify(); renderAll();
   toast(`Lista lacrada com ${fmt(pool.length)} participante${pool.length > 1 ? 's' : ''}.`);
   return true;
 }
 
+function roundActive() { return S.round && S.round.done < S.round.size; }
+
 async function draw() {
-  if (animating) return;
+  if (TELAO || animating) return;
   ensureAudio();
   if (!S.locked) { const ok = await lock(); if (!ok) return; }
   if (!remaining.length) { toast('Todos os participantes já foram sorteados.'); return; }
-  const qtd = Math.max(1, Math.min(Number(S.cfg.qtd) || 1, remaining.length));
-  const results = [];
-  for (let i = 0; i < qtd; i++) {
-    const idx = randInt(remaining.length);
-    results.push(remaining[idx]);
-    remaining[idx] = remaining[remaining.length - 1];
-    remaining.pop();
+  const qtd = Math.max(1, Number(S.cfg.qtd) || 1);
+  const now = new Date().toISOString();
+  let items;
+  if (S.cfg.modoQtd === 'um' && qtd > 1) {
+    // Um de cada vez: cada clique sorteia o próximo da rodada
+    if (!roundActive()) S.round = { size: Math.min(qtd, remaining.length), done: 0, b: nextBatch() };
+    const o = S.history.length + 1;
+    S.history.push({ o, v: pickOne(), t: now, a: false, b: S.round.b });
+    S.round.done++;
+    items = S.history.filter(h => h.b === S.round.b).map(h => itemFrom(h, h.o !== o));
+  } else {
+    S.round = null;
+    const n = Math.min(qtd, remaining.length), b = nextBatch();
+    items = [];
+    for (let i = 0; i < n; i++) {
+      const h = { o: S.history.length + 1, v: pickOne(), t: now, a: false, b };
+      S.history.push(h); items.push(itemFrom(h, false));
+    }
   }
   // Grava antes de animar: o resultado é definitivo.
-  const now = new Date().toISOString();
-  const startOrd = S.history.length + 1;
-  results.forEach((v, i) => S.history.push({ o: startOrd + i, v, t: now, a: false }));
   save();
-  await animate(results, startOrd);
+  broadcast({ t: 'anim', items });
+  await animate(items);
+  renderAll();
+}
+
+async function absent(ord) {
+  if (TELAO || animating) return;
+  const h = histBy(ord); if (!h) return;
+  if (h.a) {
+    if (h.subBy) return; // já existe substituto: a ausência fica registrada
+    h.a = false; save(); notify(); renderHistory(); renderIdle();
+    toast(`Marcação de ausente removida de “${h.v}”.`);
+    return;
+  }
+  const msg = remaining.length > 1 ? 'Um substituto será sorteado automaticamente entre os que restam.'
+    : remaining.length === 1 ? `Resta apenas 1 participante (${remaining[0]}), que será chamado automaticamente.`
+    : 'Não há mais participantes para substituir.';
+  if (!confirm(`Marcar “${h.v}” como ausente?\n\n${msg}\n\nQuem é marcado como ausente não volta para a lista.`)) return;
+  ensureAudio();
+  h.a = true;
+  if (!remaining.length) { save(); notify(); renderAll(); renderIdle(); toast(`“${h.v}” marcado como ausente. Não há mais ninguém para sortear.`); return; }
+  const o = S.history.length + 1;
+  S.history.push({ o, v: pickOne(), t: new Date().toISOString(), a: false, b: nextBatch(), sub: h.o });
+  h.subBy = o;
+  save();
+  const items = [itemFrom(histBy(o), false)];
+  broadcast({ t: 'anim', items });
+  await animate(items);
   renderAll();
 }
 
 function newRaffle() {
-  if (animating) return;
+  if (TELAO || animating) return;
   if (S.locked && S.history.length && !confirm('Iniciar um novo sorteio?\n\nOs resultados atuais serão apagados. Baixe o CSV ou imprima a ata antes, se precisar.')) return;
-  S.locked = false; S.lockedAt = null; S.hash = ''; S.history = []; S.pool = null;
-  save(); rebuildFromState(); renderAll(); renderIdle();
+  S.locked = false; S.lockedAt = null; S.hash = ''; S.history = []; S.pool = null; S.round = null;
+  save(); notify(); rebuildFromState(); renderAll(); renderIdle();
   toast('Pronto para um novo sorteio. A lista pode ser editada.');
-}
-
-function toggleAbsent(ord) {
-  const h = S.history.find(x => x.o === ord); if (!h) return;
-  h.a = !h.a; save(); renderHistory();
-  toast(h.a ? `“${h.v}” marcado como ausente. Não volta para a lista — sorteie novamente.` : `Marcação de ausente removida de “${h.v}”.`);
 }
 
 /* ---------- Animação ---------- */
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const bigScreen = () => document.body.classList.contains('present') || TELAO;
 function sizeFor(text, count) {
   const len = String(text).length;
   let base = count === 1 ? 120 : count <= 3 ? 74 : count <= 6 ? 54 : 38;
   if (len > 6) base *= Math.max(0.32, Math.min(1, 9 / len));
-  if (document.body.classList.contains('present')) base *= 1.25;
+  if (bigScreen()) base *= 1.3;
   return Math.max(18, Math.round(base));
 }
-function cardHTML(ord, count) {
-  return `<div class="res rolling"><span class="ord">${ord}º sorteado</span><div class="val" style="font-size:${sizeFor('00000', count)}px">—</div></div>`;
+function cardHTML(it, count, done) {
+  const txt = done ? it.v : '—';
+  return `<div class="res ${done ? 'done static' : 'rolling'}"><span class="ord">${esc(it.badge)}</span>` +
+    `<div class="val" style="font-size:${sizeFor(done ? it.v : '00000', count)}px">${esc(txt)}</div>` +
+    (it.note ? `<div class="note">${esc(it.note)}</div>` : '') + `</div>`;
 }
-async function animate(results, startOrd) {
-  animating = true; setDrawEnabled();
-  const disp = $('#display'); const n = results.length;
-  disp.innerHTML = results.map((_, i) => cardHTML(startOrd + i, n)).join('');
+async function animate(items) {
+  animating = true; setDrawEnabled(); renderHistory();
+  const disp = $('#display'); const n = items.length;
+  disp.innerHTML = items.map(it => cardHTML(it, n, it.static)).join('');
   const cards = [...disp.querySelectorAll('.res')];
-  const sample = pool.length ? pool : results;
+  const live = items.map((it, i) => ({ it, card: cards[i] })).filter(x => !x.it.static);
+  const sample = remaining.length ? remaining.concat(live.map(x => x.it.v)) : pool.length ? pool : items.map(i => i.v);
   const show = (card, txt) => { const v = card.querySelector('.val'); v.textContent = txt; v.style.fontSize = sizeFor(txt, n) + 'px'; };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const total = reduce ? 300 : 2600, stagger = n > 1 ? Math.min(600, 3000 / n) : 0;
-  const t0 = performance.now(); const stopAt = cards.map((_, i) => total + i * stagger);
-  const stopped = new Array(n).fill(false);
-  let delay = 45;
-  while (stopped.includes(false)) {
+  const fast = sample.length <= 1;
+  const total = reduce || fast ? 500 : 2600;
+  const stagger = live.length > 1 ? Math.min(600, 3000 / live.length) : 0;
+  const t0 = performance.now();
+  const end = total + (live.length - 1) * stagger;
+  live.forEach((x, i) => { x.stop = total + i * stagger; x.done = false; });
+  while (live.some(x => !x.done)) {
     const el = performance.now() - t0;
-    cards.forEach((card, i) => {
-      if (stopped[i]) return;
-      if (el >= stopAt[i]) {
-        stopped[i] = true; show(card, results[i]);
-        card.classList.remove('rolling'); card.classList.add('done'); chime(n === 1 || i === n - 1);
+    live.forEach((x, i) => {
+      if (x.done) return;
+      if (el >= x.stop) {
+        x.done = true; show(x.card, x.it.v);
+        x.card.classList.remove('rolling'); x.card.classList.add('done'); chime(i === live.length - 1);
       } else {
-        // apenas efeito visual (o resultado já foi definido)
-        show(card, sample[Math.floor(Math.random() * sample.length)]);
+        // apenas efeito visual (o resultado já foi definido e gravado)
+        show(x.card, sample[Math.floor(Math.random() * sample.length)]);
       }
     });
     tick();
-    const progress = Math.min(1, el / (total + (n - 1) * stagger));
-    delay = 45 + 230 * progress * progress;
-    await sleep(delay);
+    const p = Math.min(1, el / end);
+    await sleep(45 + 230 * p * p);
   }
   confetti();
   animating = false; setDrawEnabled();
@@ -594,6 +732,11 @@ function renderConfig() {
   $('#tabNum').disabled = L && S.mode !== 'numeros';
   $('#tabNome').disabled = L && S.mode !== 'nomes';
   $('.file-btn').style.display = L ? 'none' : '';
+  $('#modoQtdBox').hidden = c.qtd <= 1;
+  document.querySelectorAll('[data-mq]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mq === c.modoQtd));
+  $('#modoQtdHint').textContent = c.modoQtd === 'um'
+    ? `Cada clique revela 1 resultado, até completar ${c.qtd}.`
+    : `Os ${c.qtd} resultados são revelados juntos.`;
   const pill = $('#statusPill');
   pill.className = 'pill ' + (L ? 'lock' : 'ok');
   pill.textContent = L ? '🔒 Lista lacrada' : 'Aberto para edição';
@@ -602,7 +745,7 @@ function renderConfig() {
   updateQtdButtons();
 }
 function updateQtdButtons() {
-  const max = Math.max(1, remaining.length || pool.length || 1);
+  const max = Math.max(1, S.locked ? remaining.length : pool.length);
   $('#qtdMenos').disabled = S.cfg.qtd <= 1;
   $('#qtdMais').disabled = S.cfg.qtd >= max;
 }
@@ -610,39 +753,52 @@ function updateQtdButtons() {
 function renderCounter() {
   const total = pool.length, drawn = S.locked ? S.history.length : 0, rest = S.locked ? remaining.length : total;
   $('#counter').innerHTML = total ? `<b>${fmt(rest)}</b> restante${rest !== 1 ? 's' : ''} de ${fmt(total)} · <b>${fmt(drawn)}</b> sorteado${drawn !== 1 ? 's' : ''}` : 'Configure os participantes';
-  $('#bar').style.width = total ? (drawn / total * 100) + '%' : '0';
+  $('#bar').style.width = total ? ((total - rest) / total * 100) + '%' : '0';
 }
 function setDrawEnabled() {
   const btn = $('#btnSortear');
   const done = S.locked && remaining.length === 0;
   btn.disabled = animating || done || (!S.locked && !pool.length);
-  $('#lblSortear').textContent = animating ? 'Sorteando…' : done ? 'Todos sorteados' : (S.history.length ? 'Sortear novamente' : 'Sortear');
+  let lbl = S.history.length ? 'Sortear novamente' : 'Sortear';
+  const qtd = Number(S.cfg.qtd) || 1;
+  if (S.cfg.modoQtd === 'um' && qtd > 1 && !done) {
+    if (roundActive()) lbl = `Sortear ${S.round.done + 1}º de ${S.round.size}`;
+    else lbl = `Sortear 1º de ${Math.min(qtd, S.locked ? remaining.length : pool.length || qtd)}`;
+  }
+  $('#lblSortear').textContent = animating ? 'Sorteando…' : done ? 'Todos sorteados' : lbl;
 }
 function renderIdle() {
   const disp = $('#display');
   if (S.locked && S.history.length) {
-    // mostra o(s) último(s) sorteado(s)
-    const lastT = S.history[S.history.length - 1].t;
-    const last = S.history.filter(h => h.t === lastT);
-    disp.innerHTML = last.map(h => `<div class="res done"><span class="ord">${h.o}º sorteado</span><div class="val" style="font-size:${sizeFor(h.v, last.length)}px">${esc(h.v)}</div></div>`).join('');
+    const last = S.history[S.history.length - 1];
+    const key = (h) => h.b != null ? 'b' + h.b : 't' + h.t;
+    const batch = S.history.filter(h => key(h) === key(last));
+    disp.innerHTML = batch.map(h => cardHTML(itemFrom(h, true), batch.length, true)).join('');
     if (remaining.length === 0) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Todos os participantes foram sorteados.</div>`);
   } else {
-    disp.innerHTML = `<div class="idle"><div class="big">Boa sorte!</div><p>${S.mode === 'numeros' ? 'Sorteio por número' : 'Sorteio por nome'} · clique em <b>Sortear</b> para começar</p></div>`;
+    const sub = TELAO ? 'Aguardando o sorteio…' : `${S.mode === 'numeros' ? 'Sorteio por número' : 'Sorteio por nome'} · clique em <b>Sortear</b> para começar`;
+    disp.innerHTML = `<div class="idle"><div class="big">Boa sorte!</div><p>${sub}</p></div>`;
   }
 }
 function renderHistory() {
   const ul = $('#histList');
   if (!S.history.length) { ul.innerHTML = `<li class="empty">Nenhum resultado ainda.</li>`; }
   else {
-    ul.innerHTML = S.history.slice().reverse().map(h => `
-      <li class="hist-item ${h.a ? 'absent' : ''}">
+    ul.innerHTML = S.history.slice().reverse().map(h => {
+      const orig = h.sub ? histBy(h.sub) : null;
+      let extra = h.a ? ' · ausente' + (h.subBy ? ` → substituído pelo ${h.subBy}º` : '') : '';
+      if (orig) extra += ` · substituto de ${esc(orig.v)}`;
+      const btn = h.a
+        ? (h.subBy ? '' : `<button class="mini on" data-abs="${h.o}" ${animating ? 'disabled' : ''}>Desfazer ausente</button>`)
+        : `<button class="mini" data-abs="${h.o}" ${animating ? 'disabled' : ''}>Ausente</button>`;
+      return `<li class="hist-item ${h.a ? 'absent' : ''}">
         <span class="n">${h.o}º</span>
-        <div><div class="v">${esc(h.v)}</div><div class="t">${fmtTime(h.t)}${h.a ? ' · ausente' : ''}</div></div>
-        <button class="mini ${h.a ? 'on' : ''}" data-abs="${h.o}">${h.a ? 'Desfazer ausente' : 'Ausente'}</button>
-      </li>`).join('');
+        <div><div class="v">${esc(h.v)}</div><div class="t">${fmtTime(h.t)}${extra}</div></div>
+        ${btn || '<span></span>'}
+      </li>`;
+    }).join('');
   }
   $('#btnCsv').disabled = $('#btnAta').disabled = !S.history.length;
-  // lista de participantes
   const drawn = new Set(S.history.map(h => h.v));
   const shown = pool.slice(0, 2000);
   $('#poolSummary').textContent = `Ver lista de participantes (${fmt(pool.length)})`;
@@ -650,12 +806,32 @@ function renderHistory() {
     (pool.length > shown.length ? `<span class="chip">… e mais ${fmt(pool.length - shown.length)}</span>` : '');
   $('#integrity').innerHTML = S.locked && S.hash ? `Código de integridade da lista (SHA-256): <code>${S.hash}</code>` : '';
 }
-function renderAll() { renderConfig(); renderCounter(); setDrawEnabled(); renderHistory(); }
+function renderSound() {
+  const b = $('#btnSom');
+  const waves = '<path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>';
+  const slash = '<line x1="3" y1="3" x2="21" y2="21"/>';
+  $('#icoSom').innerHTML = '<path d="M11 5 6 9H2v6h4l5 4V5z"/>' + (S.som ? waves : waves + slash);
+  b.setAttribute('aria-pressed', String(!S.som));
+  b.title = S.som ? 'Som ativado (clique para desativar)' : 'Som desativado (clique para ativar)';
+  b.classList.toggle('muted', !S.som);
+}
+function renderTelaoStatus() {
+  const on = telaoAlive();
+  $('#telaoDot').classList.toggle('on', on);
+  $('#btnTelao').title = on ? 'Telão conectado — o som toca no telão' : 'Abrir o telão em outra janela (para a 2ª tela)';
+}
+function renderAll() { renderConfig(); renderCounter(); setDrawEnabled(); renderHistory(); renderSound(); }
 
 /* ---------- Exportação ---------- */
+function obs(h) {
+  const parts = [];
+  if (h.a) parts.push('Ausente' + (h.subBy ? ` — substituído pelo ${h.subBy}º` : ''));
+  if (h.sub) { const o = histBy(h.sub); parts.push(`Substituto do ${h.sub}º${o ? ' (' + o.v + ')' : ''}`); }
+  return parts.join('; ');
+}
 function exportCsv() {
-  const rows = [['Ordem', 'Resultado', 'Data/Hora', 'Situação']].concat(
-    S.history.map(h => [h.o + 'º', h.v, fmtDateTime(h.t), h.a ? 'Ausente' : 'Sorteado']));
+  const rows = [['Ordem', 'Resultado', 'Data/Hora', 'Situação', 'Observação']].concat(
+    S.history.map(h => [h.o + 'º', h.v, fmtDateTime(h.t), h.a ? 'Ausente' : 'Sorteado', obs(h)]));
   const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -676,21 +852,23 @@ function printAta() {
       <div><b>Total de participantes:</b> ${fmt(pool.length)}</div>
       <div><b>Lista lacrada em:</b> ${fmtDateTime(S.lockedAt)}</div>
       <div><b>Emitida em:</b> ${fmtDateTime(new Date().toISOString())}</div>
-      <div><b>Método:</b> gerador criptográfico do navegador (crypto.getRandomValues) com amostragem por rejeição, sem reposição.</div>
+      <div><b>Método:</b> gerador criptográfico do navegador (crypto.getRandomValues) com amostragem por rejeição, sem reposição. Ausentes não retornam à lista e são substituídos por novo sorteio.</div>
       <div><b>Código de integridade (SHA-256):</b> <span class="hash">${S.hash || '—'}</span></div>
     </div>
     <h2>Resultados</h2>
-    <table><thead><tr><th>Ordem</th><th>Resultado</th><th>Data/Hora</th><th>Situação</th></tr></thead>
-    <tbody>${S.history.map(h => `<tr><td>${h.o}º</td><td>${esc(h.v)}</td><td>${fmtDateTime(h.t)}</td><td>${h.a ? 'Ausente' : 'Sorteado'}</td></tr>`).join('')}</tbody></table>
+    <table><thead><tr><th>Ordem</th><th>Resultado</th><th>Data/Hora</th><th>Situação</th><th>Observação</th></tr></thead>
+    <tbody>${S.history.map(h => `<tr><td>${h.o}º</td><td>${esc(h.v)}</td><td>${fmtDateTime(h.t)}</td><td>${h.a ? 'Ausente' : 'Sorteado'}</td><td>${esc(obs(h))}</td></tr>`).join('')}</tbody></table>
     <div class="sign"><div>Responsável pelo sorteio</div><div>Testemunha</div></div>`;
   window.print();
 }
 
 /* ---------- Som ---------- */
 let actx = null;
-function ensureAudio() { if (!soundOn) return; try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) {} }
+// No painel de controle, o som fica mudo quando o telão está aberto (o telão toca).
+const soundOn = () => S.som && (TELAO || !telaoAlive());
+function ensureAudio() { try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) {} }
 function beep(freq, dur, vol, when = 0, type = 'sine') {
-  if (!soundOn || !actx) return;
+  if (!soundOn() || !actx) return;
   const t = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
   o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + .02);
@@ -702,7 +880,7 @@ function chime(big) { [523.25, 659.25, 783.99, big ? 1046.5 : null].filter(Boole
 function confetti() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const cv = $('#confetti'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
-  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const colors = ['#f3b52a', '#ffd766', '#1d86cf', '#0f8a3c', '#0f2160', '#e39a12'];
   const P = Array.from({ length: 180 }, () => ({
     x: innerWidth / 2 + (Math.random() - .5) * 200, y: innerHeight * .45,
@@ -721,9 +899,9 @@ function confetti() {
 
 /* ---------- Toast ---------- */
 let toastT;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200); }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3500); }
 
-/* ---------- Apresentação ---------- */
+/* ---------- Apresentação (tela cheia) ---------- */
 function togglePresent() {
   const on = !document.body.classList.contains('present');
   document.body.classList.toggle('present', on);
@@ -737,12 +915,22 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
+/* ---------- Telão (2ª tela) ---------- */
+let telaoWin = null;
+function openTelao() {
+  const url = location.href.split('#')[0].split('?')[0] + '?telao=1';
+  if (telaoWin && !telaoWin.closed) { telaoWin.focus(); return; }
+  telaoWin = window.open(url, 'sorteio-ejud-telao', 'popup=yes,width=1280,height=760');
+  if (!telaoWin) { window.open(url, '_blank'); }
+  toast('Telão aberto. Arraste a janela para a 2ª tela e clique nela para iniciar.');
+}
+
 /* ---------- Eventos ---------- */
 function onCfgChange() {
   if (S.locked) return;
   rebuildFromState();
   S.cfg.qtd = Math.max(1, Math.min(S.cfg.qtd, Math.max(1, pool.length)));
-  save(); renderAll(); if (!animating) renderIdle();
+  save(); notify(); renderAll(); if (!animating) renderIdle();
 }
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
   if (S.locked || animating) return; S.mode = b.dataset.mode; onCfgChange();
@@ -754,43 +942,63 @@ $('#dedup').addEventListener('change', e => { S.cfg.dedup = e.target.checked; on
 $('#arquivo').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   const txt = await f.text();
-  const names = txt.split(/\r?\n/).map(l => {
-    let cell = l.split(/[;,\t]/)[0] || ''; return cell.replace(/^"|"$/g, '').trim();
-  }).filter(Boolean);
+  const names = txt.split(/\r?\n/).map(l => (l.split(/[;,\t]/)[0] || '').replace(/^"|"$/g, '').trim()).filter(Boolean);
   if (names.length && /^(nome|nomes|participante|participantes)$/i.test(names[0])) names.shift();
   S.cfg.nomes = (S.cfg.nomes.trim() ? S.cfg.nomes.trim() + '\n' : '') + names.join('\n');
   $('#nomes').value = S.cfg.nomes; e.target.value = '';
   onCfgChange(); toast(`${names.length} nome${names.length !== 1 ? 's' : ''} importado${names.length !== 1 ? 's' : ''}.`);
 });
 function setQtd(v) {
+  if (animating) return;
   const max = Math.max(1, S.locked ? remaining.length : pool.length);
-  S.cfg.qtd = Math.max(1, Math.min(Math.floor(Number(v) || 1), max)); $('#qtd').value = S.cfg.qtd; save(); updateQtdButtons();
+  const q = Math.max(1, Math.min(Math.floor(Number(v) || 1), max));
+  if (q !== S.cfg.qtd) S.round = null; // muda a quantidade: nova rodada
+  S.cfg.qtd = q; save(); renderConfig(); setDrawEnabled();
 }
 $('#qtdMenos').addEventListener('click', () => setQtd(S.cfg.qtd - 1));
 $('#qtdMais').addEventListener('click', () => setQtd(S.cfg.qtd + 1));
 $('#qtd').addEventListener('change', e => setQtd(e.target.value));
+document.querySelectorAll('[data-mq]').forEach(b => b.addEventListener('click', () => {
+  if (animating || S.cfg.modoQtd === b.dataset.mq) return;
+  S.cfg.modoQtd = b.dataset.mq; S.round = null; save(); renderConfig(); setDrawEnabled();
+}));
 $('#btnSortear').addEventListener('click', draw);
 $('#btnNovo').addEventListener('click', newRaffle);
 $('#btnCsv').addEventListener('click', exportCsv);
 $('#btnAta').addEventListener('click', printAta);
 $('#btnApresentar').addEventListener('click', togglePresent);
-$('#histList').addEventListener('click', e => { const b = e.target.closest('[data-abs]'); if (b) toggleAbsent(Number(b.dataset.abs)); });
+$('#btnTelao').addEventListener('click', openTelao);
+$('#histList').addEventListener('click', e => { const b = e.target.closest('[data-abs]'); if (b) absent(Number(b.dataset.abs)); });
 $('#btnSom').addEventListener('click', () => {
-  soundOn = !soundOn; ensureAudio();
-  $('#btnSom').style.opacity = soundOn ? 1 : .5; toast(soundOn ? 'Som ativado' : 'Som desativado');
+  S.som = !S.som; ensureAudio(); save(); notify(); renderSound();
+  toast(S.som ? 'Som ativado' : 'Som desativado');
 });
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
   if (['input', 'textarea', 'select'].includes(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); togglePresent(); return; }
+  if (TELAO) return;
   if (e.key === ' ' || e.key === 'Enter') { if (tag === 'button' && e.target.id !== 'btnSortear') return; e.preventDefault(); draw(); }
-  else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); togglePresent(); }
 });
-window.addEventListener('storage', e => { if (e.key === KEY && !animating) { S = load(); rebuildFromState(); renderAll(); renderIdle(); } });
 
 // Exposto apenas para auditoria/testes
 window.SorteioEJUD = { randInt, estado: () => JSON.parse(JSON.stringify(S)), restantes: () => remaining.slice() };
 
 /* ---------- Início ---------- */
+if (TELAO) {
+  document.body.classList.add('telao');
+  document.title = 'Telão — Sorteio EJUD/TJAM';
+  const ov = $('#telaoStart'); ov.hidden = false;
+  ov.addEventListener('click', () => {
+    ensureAudio();
+    try { document.documentElement.requestFullscreen(); } catch (e) {}
+    ov.hidden = true;
+  });
+  const ping = () => broadcast({ t: 'ping' });
+  ping(); setInterval(ping, 2000);
+} else {
+  setInterval(renderTelaoStatus, 2000);
+}
 rebuildFromState(); renderAll(); renderIdle();
 })();
 </script>
