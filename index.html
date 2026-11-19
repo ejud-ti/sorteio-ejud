@@ -325,6 +325,18 @@ body.telao .brand img{height:84px}
           </div>
         </div>
 
+        <div class="field">
+          <label class="check" style="margin-top:0"><input type="checkbox" id="limitar"> Limitar o total de sorteados</label>
+          <div id="limiteBox" hidden style="margin-top:10px">
+            <div class="stepper">
+              <button type="button" id="limMenos" aria-label="Diminuir limite">−</button>
+              <input type="number" id="limite" min="1" step="1" aria-label="Total de sorteados">
+              <button type="button" id="limMais" aria-label="Aumentar limite">+</button>
+            </div>
+            <div class="hint">Ao atingir o limite, o sorteio encerra. Marcar alguém como ausente libera a vaga (−1 +1) e o substituto é sorteado.</div>
+          </div>
+        </div>
+
         <div id="cfgMsg" class="msg info" aria-live="polite"></div>
 
         <div class="btns">
@@ -339,6 +351,7 @@ body.telao .brand img{height:84px}
           <ul>
             <li>Gerador criptográfico do navegador (<i>crypto.getRandomValues</i>), sem viés de módulo: todos têm exatamente a mesma chance.</li>
             <li>Quem já foi sorteado sai da lista e <b>não se repete</b>.</li>
+            <li>Com limite, o sorteio encerra ao preencher as vagas; um ausente libera a vaga para o substituto.</li>
             <li>A lista é <b>lacrada</b> no primeiro sorteio e não pode ser alterada até um novo sorteio.</li>
             <li>O resultado é gravado antes da animação; recarregar a página não refaz o sorteio.</li>
             <li>Ausente? Marque-o: ele não volta para a lista e um <b>substituto é sorteado automaticamente</b> (se restar só um, ele é chamado direto).</li>
@@ -431,7 +444,7 @@ function randInt(n) {
 function fresh() {
   return {
     mode: 'numeros',
-    cfg: { min: 1, max: 100, excluir: '', nomes: '', dedup: true, qtd: 1, modoQtd: 'juntos' },
+    cfg: { min: 1, max: 100, excluir: '', nomes: '', dedup: true, qtd: 1, modoQtd: 'juntos', limitar: false, limite: 5 },
     locked: false, lockedAt: null, hash: '', pool: null, history: [], round: null, som: true
   };
 }
@@ -462,7 +475,8 @@ function save() {
 
 /* ---------- Comunicação com o telão ---------- */
 const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('sorteio-ejud') : null;
-let lastMsgId = null;
+const seenIds = [];
+let lastAnimO = 0; // maior ordem já animada no telão (evita repetir o mesmo sorteio)
 function broadcast(msg) {
   msg.id = Date.now() + '-' + Math.random();
   try { if (bc) bc.postMessage(msg); } catch (e) {}
@@ -471,16 +485,22 @@ function broadcast(msg) {
 function notify() { if (!TELAO) broadcast({ t: 'state' }); }
 let animQueue = Promise.resolve();
 function onMessage(msg) {
-  if (!msg || msg.id === lastMsgId) return;
-  lastMsgId = msg.id;
+  if (!msg || !msg.id || seenIds.includes(msg.id)) return;
+  seenIds.push(msg.id); if (seenIds.length > 300) seenIds.shift();
   if (TELAO) {
+    if (msg.t === 'ping') return;
     if (msg.t === 'anim') {
+      const novos = (msg.items || []).filter(i => !i.static).map(i => i.o);
+      const maxO = novos.length ? Math.max(...novos) : 0;
+      if (maxO <= lastAnimO) return; // mesmo sorteio entregue de novo: ignora
+      lastAnimO = maxO;
       animQueue = animQueue.then(async () => {
         S = load(); rebuildFromState(); renderCounter();
         await animate(msg.items);
         renderAll();
       });
     } else if (msg.t === 'state') {
+      const s = load(); if (s.history.length < lastAnimO) lastAnimO = s.history.length; // novo sorteio
       animQueue = animQueue.then(() => { S = load(); rebuildFromState(); renderAll(); renderIdle(); });
     }
   } else if (msg.t === 'ping') {
@@ -592,25 +612,30 @@ async function lock() {
 }
 
 function roundActive() { return S.round && S.round.done < S.round.size; }
+const hasLimit = () => !!S.cfg.limitar && Number(S.cfg.limite) > 0;
+const validCount = () => S.history.filter(h => !h.a).length;
+const slotsLeft = () => hasLimit() ? Math.max(0, Number(S.cfg.limite) - validCount()) : Infinity;
+const limitDone = () => S.locked && hasLimit() && slotsLeft() === 0;
 
 async function draw() {
   if (TELAO || animating) return;
   ensureAudio();
   if (!S.locked) { const ok = await lock(); if (!ok) return; }
   if (!remaining.length) { toast('Todos os participantes já foram sorteados.'); return; }
+  if (slotsLeft() <= 0) { toast(`Limite de ${S.cfg.limite} sorteados atingido. Marque um ausente para liberar uma vaga.`); return; }
   const qtd = Math.max(1, Number(S.cfg.qtd) || 1);
   const now = new Date().toISOString();
   let items;
   if (S.cfg.modoQtd === 'um' && qtd > 1) {
     // Um de cada vez: cada clique sorteia o próximo da rodada
-    if (!roundActive()) S.round = { size: Math.min(qtd, remaining.length), done: 0, b: nextBatch() };
+    if (!roundActive()) S.round = { size: Math.min(qtd, remaining.length, slotsLeft()), done: 0, b: nextBatch() };
     const o = S.history.length + 1;
     S.history.push({ o, v: pickOne(), t: now, a: false, b: S.round.b });
     S.round.done++;
     items = S.history.filter(h => h.b === S.round.b).map(h => itemFrom(h, h.o !== o));
   } else {
     S.round = null;
-    const n = Math.min(qtd, remaining.length), b = nextBatch();
+    const n = Math.min(qtd, remaining.length, slotsLeft()), b = nextBatch();
     items = [];
     for (let i = 0; i < n; i++) {
       const h = { o: S.history.length + 1, v: pickOne(), t: now, a: false, b };
@@ -733,6 +758,12 @@ function renderConfig() {
   $('#tabNome').disabled = L && S.mode !== 'nomes';
   $('.file-btn').style.display = L ? 'none' : '';
   $('#modoQtdBox').hidden = c.qtd <= 1;
+  $('#limitar').checked = !!c.limitar; $('#limitar').disabled = L;
+  $('#limiteBox').hidden = !c.limitar;
+  if (document.activeElement !== $('#limite')) $('#limite').value = c.limite;
+  $('#limite').disabled = L;
+  $('#limMenos').disabled = L || c.limite <= 1;
+  $('#limMais').disabled = L || c.limite >= Math.max(1, pool.length);
   document.querySelectorAll('[data-mq]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mq === c.modoQtd));
   $('#modoQtdHint').textContent = c.modoQtd === 'um'
     ? `Cada clique revela 1 resultado, até completar ${c.qtd}.`
@@ -744,28 +775,41 @@ function renderConfig() {
   else { const r = buildPool(); r.error ? showCfgMsg(r.error, true) : showCfgMsg(r.info, false); }
   updateQtdButtons();
 }
+function qtdMax() {
+  let m = S.locked ? remaining.length : pool.length;
+  if (hasLimit()) m = Math.min(m, Number(S.cfg.limite));
+  return Math.max(1, m);
+}
 function updateQtdButtons() {
-  const max = Math.max(1, S.locked ? remaining.length : pool.length);
+  const max = qtdMax();
   $('#qtdMenos').disabled = S.cfg.qtd <= 1;
   $('#qtdMais').disabled = S.cfg.qtd >= max;
 }
 
 function renderCounter() {
   const total = pool.length, drawn = S.locked ? S.history.length : 0, rest = S.locked ? remaining.length : total;
-  $('#counter').innerHTML = total ? `<b>${fmt(rest)}</b> restante${rest !== 1 ? 's' : ''} de ${fmt(total)} · <b>${fmt(drawn)}</b> sorteado${drawn !== 1 ? 's' : ''}` : 'Configure os participantes';
-  $('#bar').style.width = total ? ((total - rest) / total * 100) + '%' : '0';
+  if (!total) { $('#counter').innerHTML = 'Configure os participantes'; $('#bar').style.width = '0'; return; }
+  if (hasLimit()) {
+    const lim = Number(S.cfg.limite), val = S.locked ? validCount() : 0;
+    $('#counter').innerHTML = `Vagas: <b>${fmt(val)}</b> de ${fmt(lim)} · ${fmt(rest)} na lista`;
+    $('#bar').style.width = Math.min(100, val / lim * 100) + '%';
+  } else {
+    $('#counter').innerHTML = `<b>${fmt(rest)}</b> restante${rest !== 1 ? 's' : ''} de ${fmt(total)} · <b>${fmt(drawn)}</b> sorteado${drawn !== 1 ? 's' : ''}`;
+    $('#bar').style.width = ((total - rest) / total * 100) + '%';
+  }
 }
 function setDrawEnabled() {
   const btn = $('#btnSortear');
   const done = S.locked && remaining.length === 0;
-  btn.disabled = animating || done || (!S.locked && !pool.length);
+  const lim = limitDone();
+  btn.disabled = animating || done || lim || (!S.locked && !pool.length);
   let lbl = S.history.length ? 'Sortear novamente' : 'Sortear';
   const qtd = Number(S.cfg.qtd) || 1;
-  if (S.cfg.modoQtd === 'um' && qtd > 1 && !done) {
+  if (S.cfg.modoQtd === 'um' && qtd > 1 && !done && !lim) {
     if (roundActive()) lbl = `Sortear ${S.round.done + 1}º de ${S.round.size}`;
-    else lbl = `Sortear 1º de ${Math.min(qtd, S.locked ? remaining.length : pool.length || qtd)}`;
+    else lbl = `Sortear 1º de ${Math.min(qtd, S.locked ? remaining.length : pool.length || qtd, slotsLeft())}`;
   }
-  $('#lblSortear').textContent = animating ? 'Sorteando…' : done ? 'Todos sorteados' : lbl;
+  $('#lblSortear').textContent = animating ? 'Sorteando…' : lim ? 'Sorteio encerrado' : done ? 'Todos sorteados' : lbl;
 }
 function renderIdle() {
   const disp = $('#display');
@@ -774,7 +818,8 @@ function renderIdle() {
     const key = (h) => h.b != null ? 'b' + h.b : 't' + h.t;
     const batch = S.history.filter(h => key(h) === key(last));
     disp.innerHTML = batch.map(h => cardHTML(itemFrom(h, true), batch.length, true)).join('');
-    if (remaining.length === 0) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Todos os participantes foram sorteados.</div>`);
+    if (limitDone()) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Sorteio encerrado: ${S.cfg.limite} de ${S.cfg.limite} vagas preenchidas.</div>`);
+    else if (remaining.length === 0) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Todos os participantes foram sorteados.</div>`);
   } else {
     const sub = TELAO ? 'Aguardando o sorteio…' : `${S.mode === 'numeros' ? 'Sorteio por número' : 'Sorteio por nome'} · clique em <b>Sortear</b> para começar`;
     disp.innerHTML = `<div class="idle"><div class="big">Boa sorte!</div><p>${sub}</p></div>`;
@@ -850,6 +895,7 @@ function printAta() {
     <div class="meta">
       <div><b>Modalidade:</b> ${mod}</div>
       <div><b>Total de participantes:</b> ${fmt(pool.length)}</div>
+      ${hasLimit() ? `<div><b>Limite de sorteados:</b> ${S.cfg.limite} (preenchidos: ${validCount()})</div>` : ''}
       <div><b>Lista lacrada em:</b> ${fmtDateTime(S.lockedAt)}</div>
       <div><b>Emitida em:</b> ${fmtDateTime(new Date().toISOString())}</div>
       <div><b>Método:</b> gerador criptográfico do navegador (crypto.getRandomValues) com amostragem por rejeição, sem reposição. Ausentes não retornam à lista e são substituídos por novo sorteio.</div>
@@ -950,11 +996,23 @@ $('#arquivo').addEventListener('change', async e => {
 });
 function setQtd(v) {
   if (animating) return;
-  const max = Math.max(1, S.locked ? remaining.length : pool.length);
+  const max = qtdMax();
   const q = Math.max(1, Math.min(Math.floor(Number(v) || 1), max));
   if (q !== S.cfg.qtd) S.round = null; // muda a quantidade: nova rodada
   S.cfg.qtd = q; save(); renderConfig(); setDrawEnabled();
 }
+function setLimite(v, on) {
+  if (S.locked || animating) return;
+  if (on !== undefined) S.cfg.limitar = on;
+  if (v !== undefined) S.cfg.limite = Math.max(1, Math.min(Math.floor(Number(v) || 1), Math.max(1, pool.length)));
+  S.round = null;
+  S.cfg.qtd = Math.min(S.cfg.qtd, qtdMax());
+  save(); notify(); renderAll();
+}
+$('#limitar').addEventListener('change', e => setLimite(undefined, e.target.checked));
+$('#limite').addEventListener('change', e => setLimite(e.target.value));
+$('#limMenos').addEventListener('click', () => setLimite(S.cfg.limite - 1));
+$('#limMais').addEventListener('click', () => setLimite(S.cfg.limite + 1));
 $('#qtdMenos').addEventListener('click', () => setQtd(S.cfg.qtd - 1));
 $('#qtdMais').addEventListener('click', () => setQtd(S.cfg.qtd + 1));
 $('#qtd').addEventListener('change', e => setQtd(e.target.value));
@@ -999,6 +1057,7 @@ if (TELAO) {
 } else {
   setInterval(renderTelaoStatus, 2000);
 }
+lastAnimO = S.history.length;
 rebuildFromState(); renderAll(); renderIdle();
 })();
 </script>
