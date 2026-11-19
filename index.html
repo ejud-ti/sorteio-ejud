@@ -591,11 +591,11 @@ function pickOne() {
 }
 const nextBatch = () => S.history.reduce((m, h) => Math.max(m, h.b || 0), 0) + 1;
 const histBy = (o) => S.history.find(h => h.o === o);
-function itemFrom(h, isStatic) {
+function itemFrom(h, isStatic, badge) {
   const orig = h.sub ? histBy(h.sub) : null;
   return {
     o: h.o, v: h.v, static: !!isStatic,
-    badge: h.sub ? `${h.o}º · substituto` : `${h.o}º sorteado`,
+    badge: badge || (h.sub ? `${h.o}º · substituto` : `${h.o}º sorteado`),
     note: orig ? `no lugar de ${orig.v} (ausente)` : ''
   };
 }
@@ -611,9 +611,20 @@ async function lock() {
   return true;
 }
 
-function roundActive() { return S.round && S.round.done < S.round.size; }
-const normalRoundActive = () => roundActive() && !S.round.sub;
-const subRoundActive = () => roundActive() && !!S.round.sub;
+// Rodada do modo "um de cada vez": conta só as vagas preenchidas (ausentes não contam).
+const roundEntries = () => S.round ? S.history.filter(h => h.b === S.round.b && !h.a) : [];
+const roundFilled = () => roundEntries().length;
+function roundActive() { return !!S.round && roundFilled() < S.round.size; }
+const umMode = () => S.cfg.modoQtd === 'um' && ((Number(S.cfg.qtd) || 1) > 1 || !!S.round);
+// Vaga na rodada: o substituto herda a vaga de quem estava ausente.
+function slotOf(h) {
+  if (h.sub) { const t = histBy(h.sub); if (t && t.b === h.b) return slotOf(t); }
+  const own = S.history.filter(x => x.b === h.b && !(x.sub && (histBy(x.sub) || {}).b === h.b));
+  return own.findIndex(x => x.o === h.o) + 1;
+}
+const roundItems = (newO) => roundEntries()
+  .map(h => ({ h, s: slotOf(h) })).sort((a, b) => a.s - b.s)
+  .map(({ h, s }) => itemFrom(h, h.o !== newO, `${s}º de ${S.round.size}${h.sub ? ' · substituto' : ''}`));
 const pendingAbs = () => S.history.filter(h => h.a && !h.subBy); // ausentes aguardando substituto
 const hasLimit = () => !!S.cfg.limitar && Number(S.cfg.limite) > 0;
 const validCount = () => S.history.filter(h => !h.a).length;
@@ -633,11 +644,10 @@ async function draw() {
   let items;
   if (S.cfg.modoQtd === 'um' && qtd > 1) {
     // Um de cada vez: cada clique sorteia o próximo da rodada
-    if (!normalRoundActive()) S.round = { size: Math.min(qtd, remaining.length, slotsLeft()), done: 0, b: nextBatch() };
+    if (!roundActive()) S.round = { size: Math.min(qtd, remaining.length, slotsLeft()), b: nextBatch() };
     const o = S.history.length + 1;
     S.history.push({ o, v: pickOne(), t: now, a: false, b: S.round.b });
-    S.round.done++;
-    items = S.history.filter(h => h.b === S.round.b).map(h => itemFrom(h, h.o !== o));
+    items = roundItems(o);
   } else {
     S.round = null;
     const n = Math.min(qtd, remaining.length, slotsLeft()), b = nextBatch();
@@ -659,12 +669,14 @@ async function drawSubstitutes(pend) {
   const total = Math.min(pend.length, remaining.length);
   const now = new Date().toISOString();
   let items;
-  if (S.cfg.modoQtd === 'um' && total > 1 || subRoundActive()) {
-    if (!subRoundActive()) S.round = { size: total, done: 0, b: nextBatch(), sub: true };
-    const target = pend[0], o = S.history.length + 1;
-    S.history.push({ o, v: pickOne(), t: now, a: false, b: S.round.b, sub: target.o });
-    target.subBy = o; S.round.done++;
-    items = S.history.filter(h => h.b === S.round.b).map(h => itemFrom(h, h.o !== o));
+  if (umMode()) {
+    // Um de cada vez: o substituto ocupa a mesma vaga da rodada (o contador não avança).
+    const inRound = S.round ? pend.filter(h => h.b === S.round.b) : [];
+    const target = inRound[0] || pend[0], o = S.history.length + 1;
+    const b = inRound.length ? S.round.b : nextBatch();
+    S.history.push({ o, v: pickOne(), t: now, a: false, b, sub: target.o });
+    target.subBy = o;
+    items = inRound.length ? roundItems(o) : [itemFrom(histBy(o), false)];
   } else {
     S.round = null;
     const b = nextBatch(); items = [];
@@ -687,7 +699,6 @@ function absent(ord) {
   if (h.a) {
     if (h.subBy) return; // substituto já sorteado: a ausência fica registrada
     h.a = false;
-    if (subRoundActive()) S.round.size = Math.min(S.round.size, S.round.done + pendingAbs().length);
     save(); notify(); renderAll(); renderIdle();
     toast(`Marcação de ausente removida de “${h.v}”.`);
     return;
@@ -833,11 +844,12 @@ function setDrawEnabled() {
   const pend = S.locked ? pendingAbs().length : 0;
   if (pend && !done) {
     const tot = Math.min(pend, remaining.length);
-    if (subRoundActive()) lbl = `Sortear substituto ${S.round.done + 1}º de ${S.round.size}`;
+    const inRound = S.round ? pendingAbs().filter(h => h.b === S.round.b).length : 0;
+    if (umMode() && inRound) lbl = `Sortear ${slotOf(pendingAbs().find(h => h.b === S.round.b))}º de ${S.round.size} (substituto)`;
     else if (tot === 1) lbl = 'Sortear substituto';
-    else lbl = S.cfg.modoQtd === 'um' ? `Sortear substituto 1º de ${tot}` : `Sortear ${tot} substitutos`;
+    else lbl = umMode() ? `Sortear substituto (${tot} pendentes)` : `Sortear ${tot} substitutos`;
   } else if (S.cfg.modoQtd === 'um' && qtd > 1 && !done && !lim) {
-    if (normalRoundActive()) lbl = `Sortear ${S.round.done + 1}º de ${S.round.size}`;
+    if (roundActive()) lbl = `Sortear ${roundFilled() + 1}º de ${S.round.size}`;
     else lbl = `Sortear 1º de ${Math.min(qtd, S.locked ? remaining.length : pool.length || qtd, slotsLeft())}`;
   }
   $('#lblSortear').textContent = animating ? 'Sorteando…' : lim ? 'Sorteio encerrado' : done ? 'Todos sorteados' : lbl;
@@ -847,8 +859,10 @@ function renderIdle() {
   if (S.locked && S.history.length) {
     const last = S.history[S.history.length - 1];
     const key = (h) => h.b != null ? 'b' + h.b : 't' + h.t;
-    const batch = S.history.filter(h => key(h) === key(last));
-    disp.innerHTML = batch.map(h => cardHTML(itemFrom(h, true), batch.length, true)).join('');
+    const all = S.history.filter(h => key(h) === key(last));
+    const batch = all.some(h => !h.a) ? all.filter(h => !h.a) : all;
+    const items = (S.round && last.b === S.round.b) ? roundItems(null) : batch.map(h => itemFrom(h, true));
+    disp.innerHTML = items.map(it => cardHTML(it, items.length, true)).join('');
     const np = pendingAbs().length;
     if (np && remaining.length) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--navy);font-weight:700">${np} ausente${np > 1 ? 's' : ''} aguardando substituto</div>`);
     else if (limitDone()) disp.insertAdjacentHTML('beforeend', `<div style="flex-basis:100%;color:var(--muted);font-weight:600">Sorteio encerrado: ${S.cfg.limite} de ${S.cfg.limite} vagas preenchidas.</div>`);
